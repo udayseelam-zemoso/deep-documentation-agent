@@ -1,0 +1,50 @@
+# Deep Documentation Agent Configuration
+
+# LLM Configuration
+llm:
+  provider: openai  # Options: openai, anthropic
+  model: gpt-4      # For OpenAI: gpt-4, gpt-3.5-turbo; For Anthropic: claude-3-sonnet-20240229
+  api_key: ${OPENAI_API_KEY}  # Can also use ANTHROPIC_API_KEY
+  max_tokens: 2000
+  temperature: 0.3
+
+# Analysis Configuration
+analysis:
+  max_file_size_kb: 500
+  importance_threshold: 0.5
+  top_files_percentage: 20
+  
+# Git Configuration
+git:
+  churn_analysis_months: 6
+  max_commit_messages: 100
+
+# Output Configuration
+output:
+  format: markdown
+  generate_diagrams: true
+  include_code_snippets: true
+  max_snippet_lines: 20
+
+# Language Support
+languages:
+  primary:
+    - Java
+    - JavaScript
+    - TypeScript
+  secondary:
+    - Python
+    - Go
+    - Rust
+
+# Ignored Patterns (in addition to .gitignore)
+ignore:
+  directories:
+    - node_modules
+    - target
+    - build
+    - dist
+  files:
+    - "*.min.js"
+    - "*.map"
+    - "*.log"
