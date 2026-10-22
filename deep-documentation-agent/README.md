@@ -127,13 +127,17 @@ mvn test
 
 **Deliverable**: CLI that analyzes repositories and outputs file lists with detected architecture ✓
 
-### Upcoming Work
+**Day 3-4: Importance Ranking** ✓
+- ✓ File dependency graph from Java imports (incl. same-package usage) and JS/TS `import`/`require` (`com.deepdoc.graph`)
+- ✓ Package roll-up at an auto-chosen depth, with weighted package edges and import-line evidence
+- ✓ Recency-weighted Git activity (half-life decay, merge and bulk commits ignored)
+- ✓ Personalized weighted PageRank with reverse edges and entry-point priors (`com.deepdoc.ranker`)
+- ✓ Package score, in-package file score, global priority, and DEEP / SUMMARY / LISTED levels
+- ✓ Tunable from the `graph`, `git` and `ranking` sections of `application.yml`
 
-**Day 3-4: Importance Ranking**
-- Dependency graph builder (JGraphT)
-- Git churn analysis
-- Importance scoring algorithm
-- Integration with repository analyzer
+`analyze` now also prints the package graph, the ranked packages (with Ca/Ce and role) and the top files; use `--top N` to change how many.
+
+### Upcoming Work
 
 **Day 5: Architecture Detection Enhancement**
 - Advanced pattern matching
