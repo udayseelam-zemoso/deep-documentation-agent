@@ -18,46 +18,99 @@ The Deep Documentation Agent automatically analyzes code structure, infers archi
 
 ## Requirements
 
-- JDK 11 or higher
-- Maven 3.6 or higher
-- Git (for repositories with history)
+- JDK 11 or higher (`java -version`)
+- Maven 3.6 or higher (`mvn -version`)
+- Git, only if the repo you analyze has history
 
-## Installation
+## Run on your machine
 
-### Build from Source
+All commands below start from the `deep-documentation-agent` folder (the one that contains `pom.xml`).
+
+### 1. Check Java and Maven
 
 ```bash
-git clone <repository-url>
-cd deep-documentation-agent
+java -version
+mvn -version
+```
+
+Install JDK 11+ and Maven if either command fails.
+
+### 2. Build
+
+```bash
 mvn clean package
 ```
 
-This creates an executable JAR at `target/deep-documentation-agent-1.0.0.jar`.
+This compiles the code, runs tests, and writes:
 
-## Usage
+`target/deep-documentation-agent-1.0.0.jar`
 
-### Basic Analysis
-
-```bash
-java -jar deep-doc-agent.jar analyze /path/to/repository
-```
-
-### With Options
+Skip tests if you only want a fast rebuild:
 
 ```bash
-java -jar deep-doc-agent.jar analyze /path/to/repository \
-  --output /path/to/output \
-  --verbose
+mvn -q -DskipTests package
 ```
 
-### Command Options
+### 3. Run the agent
 
-- `analyze <path>` - Analyze a repository and generate documentation
-  - `-o, --output <path>` - Output directory for documentation (default: `<repo>/docs`)
-  - `-v, --verbose` - Enable verbose logging
-  - `--no-llm` - Skip LLM inference (structure-only documentation)
+Analyze this project:
 
-- `version` - Show version information
+```bash
+java -jar target/deep-documentation-agent-1.0.0.jar analyze .
+```
+
+Analyze any other local repo (use your real path):
+
+```bash
+java -jar target/deep-documentation-agent-1.0.0.jar analyze /path/to/your/repo
+```
+
+On Windows:
+
+```bat
+java -jar target\deep-documentation-agent-1.0.0.jar analyze C:\path\to\your\repo
+```
+
+Without building a JAR, after dependencies are downloaded once:
+
+```bash
+mvn -q exec:java -Dexec.args="analyze /path/to/your/repo"
+```
+
+### 4. Other commands
+
+```bash
+java -jar target/deep-documentation-agent-1.0.0.jar --help
+java -jar target/deep-documentation-agent-1.0.0.jar version
+java -jar target/deep-documentation-agent-1.0.0.jar analyze /path/to/repo --verbose
+```
+
+| Option | Meaning today |
+|---|---|
+| `analyze <path>` | Scan the repo and print a summary |
+| `-v`, `--verbose` | Print a stack trace if something fails |
+| `-o`, `--output` | Reserved for later (docs output folder) |
+| `--no-llm` | Reserved for later (skip LLM) |
+
+You do **not** need an OpenAI/Anthropic key for this slice. LLM calls are not wired yet.
+
+### 5. Change settings
+
+Edit `src/main/resources/application.yml` (ignore folders, extensions, Git on/off). Then rebuild (`mvn -q -DskipTests package`) and run again.
+
+Logging format stays in `src/main/resources/logback.xml` because Logback only reads XML.
+
+### 6. Run tests
+
+```bash
+mvn test
+```
+
+### IntelliJ / VS Code / Eclipse
+
+1. Open the `deep-documentation-agent` folder as a Maven project and wait for it to import.
+2. Run `com.deepdoc.cli.DeepDocCLI`.
+3. Program arguments: `analyze` plus a repo path, for example `analyze .`
 
 ## Project Status
 
@@ -119,18 +172,22 @@ java -jar deep-doc-agent.jar analyze /path/to/repository \
 
 ## Configuration
 
-The agent uses `config.yaml` for configuration. Key settings:
+Settings live in `src/main/resources/application.yml` (loaded at startup). Example:
 
 ```yaml
-llm:
-  provider: openai
-  model: gpt-4
-  api_key: ${OPENAI_API_KEY}
-
 analysis:
-  importance_threshold: 0.5
-  top_files_percentage: 20
+  ignoreDirectories:
+    - node_modules
+    - target
+  ignoreExtensions:
+    - .class
+    - .jar
+
+git:
+  enabled: true
 ```
+
+Rebuild after you edit that file. Logging stays in `logback.xml`.
 
 ## Development
 
@@ -163,6 +220,7 @@ The project follows standard Java conventions with:
 - **JGraphT**: Graph algorithms (for dependency analysis)
 - **SLF4J + Logback**: Logging
 - **JUnit 5 + AssertJ**: Testing
+- **SnakeYAML**: Loads `src/main/resources/application.yml`
 
 ## Design Decisions
 

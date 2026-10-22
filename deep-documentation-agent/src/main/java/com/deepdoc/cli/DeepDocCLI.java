@@ -1,6 +1,8 @@
 package com.deepdoc.cli;
 
 import com.deepdoc.analyzer.RepositoryAnalyzer;
+import com.deepdoc.config.AppConfig;
+import com.deepdoc.config.ConfigLoader;
 import com.deepdoc.model.FileInfo;
 import com.deepdoc.model.RepositoryManifest;
 import picocli.CommandLine;
@@ -43,15 +45,17 @@ public class DeepDocCLI implements Callable<Integer> {
             boolean noLlm
     ) {
         try {
-            logger.info("Deep Documentation Agent v1.0.0");
+            AppConfig config = ConfigLoader.load();
+            logger.info("{} v{}", config.getApp().getName(), config.getApp().getVersion());
             logger.info("=================================");
+            logger.info("Loaded settings from src/main/resources/application.yml");
             logger.info("");
-            
+
             Path repoPath = Paths.get(repositoryPath).toAbsolutePath().normalize();
             logger.info("Analyzing repository: {}", repoPath);
             logger.info("");
             
-            RepositoryAnalyzer analyzer = new RepositoryAnalyzer();
+            RepositoryAnalyzer analyzer = new RepositoryAnalyzer(config);
             RepositoryManifest manifest = analyzer.analyze(repoPath);
             
             printManifestSummary(manifest);

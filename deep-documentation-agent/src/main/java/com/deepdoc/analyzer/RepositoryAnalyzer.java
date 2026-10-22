@@ -1,5 +1,7 @@
 package com.deepdoc.analyzer;
 
+import com.deepdoc.config.AppConfig;
+import com.deepdoc.config.ConfigLoader;
 import com.deepdoc.model.FileInfo;
 import com.deepdoc.model.RepositoryContext;
 import com.deepdoc.model.RepositoryManifest;
@@ -20,29 +22,25 @@ import java.util.stream.Collectors;
 public class RepositoryAnalyzer {
     private static final Logger logger = LoggerFactory.getLogger(RepositoryAnalyzer.class);
     
-    private static final Set<String> DEFAULT_IGNORE_DIRS = Set.of(
-            ".git", ".svn", ".hg",
-            "node_modules", "bower_components",
-            "target", "build", "dist", "out",
-            ".idea", ".vscode", ".eclipse",
-            "vendor", "__pycache__", ".gradle"
-    );
-
-    private static final Set<String> DEFAULT_IGNORE_EXTENSIONS = Set.of(
-            ".class", ".jar", ".war", ".ear",
-            ".o", ".so", ".dll", ".dylib",
-            ".exe", ".bin",
-            ".log", ".tmp", ".temp",
-            ".min.js", ".min.css",
-            ".map"
-    );
+    private static final Set<String> ALWAYS_IGNORE_DIRS = Set.of(".git");
 
     private final LanguageDetector languageDetector;
+    private final Set<String> ignoreDirectories;
+    private final Set<String> ignoreExtensions;
     private final Set<String> customIgnoreDirs;
+    private final boolean gitEnabled;
 
     public RepositoryAnalyzer() {
+        this(ConfigLoader.load());
+    }
+
+    public RepositoryAnalyzer(AppConfig config) {
         this.languageDetector = new LanguageDetector();
+        this.ignoreDirectories = new HashSet<>(ALWAYS_IGNORE_DIRS);
+        this.ignoreDirectories.addAll(config.getAnalysis().getIgnoreDirectories());
+        this.ignoreExtensions = new HashSet<>(config.getAnalysis().getIgnoreExtensions());
         this.customIgnoreDirs = new HashSet<>();
+        this.gitEnabled = config.getGit().isEnabled();
     }
 
     public RepositoryManifest analyze(Path repositoryPath) throws IOException {
@@ -90,7 +88,7 @@ public class RepositoryAnalyzer {
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
                 String dirName = dir.getFileName().toString();
                 
-                if (DEFAULT_IGNORE_DIRS.contains(dirName) || customIgnoreDirs.contains(dirName)) {
+                if (ignoreDirectories.contains(dirName) || customIgnoreDirs.contains(dirName)) {
                     logger.debug("Skipping ignored directory: {}", dir);
                     return FileVisitResult.SKIP_SUBTREE;
                 }
@@ -136,7 +134,7 @@ public class RepositoryAnalyzer {
     }
 
     private boolean shouldIgnoreFile(String fileName) {
-        for (String ext : DEFAULT_IGNORE_EXTENSIONS) {
+        for (String ext : ignoreExtensions) {
             if (fileName.endsWith(ext)) {
                 return true;
             }
@@ -238,6 +236,12 @@ public class RepositoryAnalyzer {
     }
 
     private void enrichWithGitData(Path repositoryPath, RepositoryManifest manifest) {
+        if (!gitEnabled) {
+            logger.info("Git analysis disabled in application.yml");
+            manifest.getContext().setHasGitHistory(false);
+            return;
+        }
+
         try {
             GitInterface gitInterface = new GitInterface(repositoryPath);
             
