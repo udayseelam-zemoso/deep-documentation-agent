@@ -1,0 +1,5 @@
+# Settings moved to the file the JAR actually loads:
+#   src/main/resources/application.yml
+#
+# Edit that YAML, then rebuild:
+#   mvn -q -DskipTests package

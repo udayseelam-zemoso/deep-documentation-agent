@@ -1,0 +1,68 @@
+# =============================================================================
+# Deep Documentation Agent - settings
+# File: src/main/resources/application.yml
+# Packed into the JAR and loaded on startup. Edit this file, then rebuild.
+#
+# Logging format is still in logback.xml. Logback only reads XML, not YAML.
+# =============================================================================
+
+# Shown in the CLI banner
+app:
+  name: Deep Documentation Agent
+  version: 1.0.0
+
+# File discovery: which folders and file types to skip
+analysis:
+  ignoreDirectories:
+    - .git
+    - .svn
+    - .hg
+    - node_modules
+    - bower_components
+    - target
+    - build
+    - dist
+    - out
+    - .idea
+    - .vscode
+    - .eclipse
+    - vendor
+    - __pycache__
+    - .gradle
+  ignoreExtensions:
+    - .class
+    - .jar
+    - .war
+    - .ear
+    - .o
+    - .so
+    - .dll
+    - .dylib
+    - .exe
+    - .bin
+    - .log
+    - .tmp
+    - .temp
+    - .min.js
+    - .min.css
+    - .map
+
+# Git history (used later for churn / importance ranking)
+git:
+  enabled: true
+  churnAnalysisMonths: 6
+  maxCommitMessages: 100
+
+# Where generated docs will go (Week 3)
+output:
+  defaultDirectory: docs
+  format: markdown
+  generateDiagrams: true
+
+# LLM settings (Week 2). Not called yet.
+llm:
+  enabled: true
+  provider: openai
+  model: gpt-4
+  maxTokens: 2000
+  temperature: 0.3
