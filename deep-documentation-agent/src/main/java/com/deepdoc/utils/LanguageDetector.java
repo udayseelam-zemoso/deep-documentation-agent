@@ -11,6 +11,8 @@ public class LanguageDetector {
         EXTENSION_TO_LANGUAGE.put(".java", "Java");
         EXTENSION_TO_LANGUAGE.put(".js", "JavaScript");
         EXTENSION_TO_LANGUAGE.put(".jsx", "JavaScript");
+        EXTENSION_TO_LANGUAGE.put(".mjs", "JavaScript");
+        EXTENSION_TO_LANGUAGE.put(".cjs", "JavaScript");
         EXTENSION_TO_LANGUAGE.put(".ts", "TypeScript");
         EXTENSION_TO_LANGUAGE.put(".tsx", "TypeScript");
         EXTENSION_TO_LANGUAGE.put(".py", "Python");

@@ -3,8 +3,13 @@ package com.deepdoc.cli;
 import com.deepdoc.analyzer.RepositoryAnalyzer;
 import com.deepdoc.config.AppConfig;
 import com.deepdoc.config.ConfigLoader;
+import com.deepdoc.graph.DependencyGraph;
+import com.deepdoc.graph.DependencyGraphBuilder;
+import com.deepdoc.graph.PackageEdge;
+import com.deepdoc.graph.PackageNode;
 import com.deepdoc.model.FileInfo;
 import com.deepdoc.model.RepositoryManifest;
+import org.jgrapht.Graph;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -59,12 +64,14 @@ public class DeepDocCLI implements Callable<Integer> {
             RepositoryManifest manifest = analyzer.analyze(repoPath);
             
             printManifestSummary(manifest);
+
+            DependencyGraph graph = new DependencyGraphBuilder(config.getGraph()).build(manifest);
+            printDependencyGraph(graph);
             
             logger.info("");
             logger.info("✓ Repository analysis completed successfully");
             logger.info("");
             logger.info("Next steps:");
-            logger.info("  - File importance ranking (Week 1, Day 3-4)");
             logger.info("  - Code understanding and LLM integration (Week 2)");
             logger.info("  - Documentation generation (Week 3)");
             
@@ -132,6 +139,30 @@ public class DeepDocCLI implements Callable<Integer> {
                 relativePath, 
                 file.getLinesOfCode(), 
                 file.getLanguage());
+        }
+    }
+
+    private void printDependencyGraph(DependencyGraph graph) {
+        Graph<PackageNode, PackageEdge> packages = graph.getPackageGraph();
+        logger.info("");
+        logger.info("Dependency Graph");
+        logger.info("----------------");
+        logger.info("Files in graph: {} (tests excluded: {}, other languages not parsed: {})",
+                graph.getFileGraph().vertexSet().size(), graph.getExcludedTestFiles(), graph.getUnsupportedFiles());
+        logger.info("File dependencies: {}", graph.getFileGraph().edgeSet().size());
+        logger.info("Packages: {} at depth {}{}", packages.vertexSet().size(), graph.getGroupingDepth(),
+                graph.getStrippedPrefixes().isEmpty() ? ""
+                        : " (common prefix " + String.join(", ", graph.getStrippedPrefixes()) + " stripped)");
+        logger.info("Package dependencies: {}", packages.edgeSet().size());
+        logger.info("");
+
+        for (PackageNode node : graph.getPackages()) {
+            String targets = packages.outgoingEdgesOf(node).stream()
+                    .sorted(Comparator.comparingInt(PackageEdge::getImportCount).reversed())
+                    .map(e -> packages.getEdgeTarget(e).getName() + "(" + e.getImportCount() + ")")
+                    .collect(Collectors.joining(" "));
+            logger.info("  {} [{} files, {} lines, {} internal]{}", node.getName(), node.getFiles().size(),
+                    node.getTotalLines(), node.getInternalDependencies(), targets.isEmpty() ? "" : " -> " + targets);
         }
     }
 

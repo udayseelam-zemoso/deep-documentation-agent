@@ -45,6 +45,9 @@ public final class ConfigLoader {
         if (config.getGit() == null) {
             config.setGit(new GitSection());
         }
+        if (config.getGraph() == null) {
+            config.setGraph(new GraphSection());
+        }
         if (config.getOutput() == null) {
             config.setOutput(new OutputSection());
         }

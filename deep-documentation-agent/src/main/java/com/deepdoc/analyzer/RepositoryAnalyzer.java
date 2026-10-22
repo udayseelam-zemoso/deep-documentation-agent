@@ -142,9 +142,19 @@ public class RepositoryAnalyzer {
         return false;
     }
 
+    /** Counts lines on raw bytes so non-UTF-8 files neither fail nor leak a file handle. */
     private int countLines(Path file) throws IOException {
-        long lines = Files.lines(file).count();
-        return (int) lines;
+        byte[] bytes = Files.readAllBytes(file);
+        if (bytes.length == 0) {
+            return 0;
+        }
+        int lines = 0;
+        for (byte b : bytes) {
+            if (b == '\n') {
+                lines++;
+            }
+        }
+        return bytes[bytes.length - 1] == '\n' ? lines : lines + 1;
     }
 
     private void detectArchitectureAndFrameworks(RepositoryManifest manifest) {

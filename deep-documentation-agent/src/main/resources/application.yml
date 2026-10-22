@@ -53,6 +53,18 @@ git:
   churnAnalysisMonths: 6
   maxCommitMessages: 100
 
+# Dependency graph (Java imports, JS/TS import/require)
+graph:
+  # Test files import everything and would look central, so they are left out
+  includeTests: false
+  # Package depth is chosen automatically so the package graph has this many nodes
+  minPackages: 5
+  maxPackages: 25
+  # A package holding more than this share of files is split one level deeper...
+  splitFraction: 0.3
+  # ...but only if it has at least this many files
+  splitMinFiles: 20
+
 # Where generated docs will go (Week 3)
 output:
   defaultDirectory: docs

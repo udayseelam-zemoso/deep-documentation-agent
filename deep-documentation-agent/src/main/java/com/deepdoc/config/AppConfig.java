@@ -8,6 +8,7 @@ public class AppConfig {
     private AppSection app = new AppSection();
     private AnalysisSection analysis = new AnalysisSection();
     private GitSection git = new GitSection();
+    private GraphSection graph = new GraphSection();
     private OutputSection output = new OutputSection();
     private LlmSection llm = new LlmSection();
 
@@ -33,6 +34,14 @@ public class AppConfig {
 
     public void setGit(GitSection git) {
         this.git = git;
+    }
+
+    public GraphSection getGraph() {
+        return graph;
+    }
+
+    public void setGraph(GraphSection graph) {
+        this.graph = graph;
     }
 
     public OutputSection getOutput() {
