@@ -8,12 +8,12 @@ import java.util.Map;
  * package/import directives and count identifier usage without matching text
  * inside comments or string literals.
  */
-final class JavaSourceScanner {
+public final class JavaSourceScanner {
     private JavaSourceScanner() {
     }
 
     /** Replaces comments and string/char/text-block literals with spaces, keeping newlines and offsets. */
-    static String blankCommentsAndLiterals(String src) {
+    public static String blankCommentsAndLiterals(String src) {
         StringBuilder out = new StringBuilder(src);
         int i = 0;
         int n = src.length();

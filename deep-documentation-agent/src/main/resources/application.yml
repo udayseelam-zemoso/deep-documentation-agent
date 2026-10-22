@@ -47,10 +47,16 @@ analysis:
     - .min.css
     - .map
 
-# Git history (used later for churn / importance ranking)
+# Git history (activity signal for importance ranking)
 git:
   enabled: true
-  churnAnalysisMonths: 6
+  # Only commits from this window are read
+  historyMonths: 24
+  # A commit this many days old counts half as much as one made today
+  halfLifeDays: 180
+  maxCommits: 5000
+  # Commits touching more files than this (reformatting, renames, initial import) are ignored
+  bulkCommitFileLimit: 50
   maxCommitMessages: 100
 
 # Dependency graph (Java imports, JS/TS import/require)
@@ -64,6 +70,26 @@ graph:
   splitFraction: 0.3
   # ...but only if it has at least this many files
   splitMinFiles: 20
+
+# Importance ranking
+#   package score = structureWeight * percentile(package PageRank)
+#                 + activityWeight  * percentile(ln(1 + package commits))
+#   local score   = localStructureWeight * PageRank / max PageRank in package
+#                 + localActivityWeight  * ln(1 + commits) / max in package
+#                 + localBoundaryWeight  * (entry point or used by another package)
+#   priority      = package score * local score
+# Without Git history the activity terms are dropped and the rest re-weighted.
+ranking:
+  dampingFactor: 0.85
+  # Reverse edge weight relative to the forward one, so files that use a lot also gain rank
+  backEdgeFactor: 0.25
+  structureWeight: 0.6
+  activityWeight: 0.4
+  localStructureWeight: 0.5
+  localActivityWeight: 0.3
+  localBoundaryWeight: 0.2
+  # Share of ranked files that get a deep (per-file) write-up
+  deepFraction: 0.2
 
 # Where generated docs will go (Week 3)
 output:

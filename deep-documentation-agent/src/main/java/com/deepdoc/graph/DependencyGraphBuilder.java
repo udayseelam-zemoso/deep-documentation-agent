@@ -9,11 +9,8 @@ import org.jgrapht.graph.DefaultDirectedGraph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
+import com.deepdoc.utils.SourceFiles;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,7 +57,7 @@ public class DependencyGraphBuilder {
                 excludedTests++;
                 continue;
             }
-            String source = read(file.getFilePath());
+            String source = SourceFiles.read(file.getFilePath());
             if (source == null) {
                 continue;
             }
@@ -135,19 +132,5 @@ public class DependencyGraphBuilder {
 
         return new DependencyGraph(root, fileGraph, packageGraph, packageOf, grouping.getDepth(),
                 grouping.getStrippedPrefixes(), excludedTests, unsupported);
-    }
-
-    private static String read(Path file) {
-        try {
-            byte[] bytes = Files.readAllBytes(file);
-            try {
-                return StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString();
-            } catch (CharacterCodingException e) {
-                return new String(bytes, StandardCharsets.ISO_8859_1);
-            }
-        } catch (IOException e) {
-            logger.warn("Skipping unreadable file {}: {}", file, e.getMessage());
-            return null;
-        }
     }
 }
