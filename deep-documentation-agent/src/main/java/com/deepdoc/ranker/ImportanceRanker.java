@@ -39,7 +39,7 @@ import java.util.function.ToDoubleFunction;
  * use many others are not starved of rank. Entry points get a larger teleport prior.
  *
  * <p>Without Git history the activity terms are dropped and the remaining weights are
- * re-normalized, so scores stay in [0, 1] either way. See {@code docs/README.md} for a worked
+ * re-normalized, so scores stay in [0, 1] either way. See {@code design/README.md} for a worked
  * example of the whole computation.
  */
 public class ImportanceRanker {

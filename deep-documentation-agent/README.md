@@ -137,7 +137,7 @@ mvn test
 
 `analyze` now also prints the package graph, the ranked packages (with Ca/Ce and role) and the top files; use `--top N` to change how many.
 
-The approach, formulas and a worked example are documented in [`docs/README.md`](docs/README.md).
+The approach, formulas and a worked example are documented in [`design/README.md`](design/README.md).
 
 **Language coverage** ✓
 - Languages are defined in `src/main/resources/languages.yml` (about 65 entries: extensions, special file names such as `Dockerfile`, and shebang interpreters). Add a language there; no code change is needed for it to be detected.

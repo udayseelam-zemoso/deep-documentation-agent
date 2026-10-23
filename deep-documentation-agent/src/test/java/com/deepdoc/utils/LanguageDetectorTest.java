@@ -49,7 +49,7 @@ class LanguageDetectorTest {
 
     @Test
     void shouldDetectMarkdownFiles() {
-        Path mdFile = Paths.get("docs/README.md");
+        Path mdFile = Paths.get("design/README.md");
         assertThat(detector.detectLanguage(mdFile)).isEqualTo("Markdown");
     }
 

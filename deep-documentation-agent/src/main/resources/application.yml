@@ -60,7 +60,7 @@ git:
   maxCommitMessages: 100
 
 # Dependency graph: which files are ranked, how imports become edges, how files form packages.
-# See docs/README.md for the full approach.
+# See design/README.md for the full approach.
 graph:
   # Test files import everything and would look central, so they are left out
   includeTests: false
