@@ -10,8 +10,8 @@ import java.util.Map;
 public enum LanguageFamily {
     /** Java, Kotlin, Scala, Groovy: packages and imports. */
     JVM(SourceScanner.Syntax.C_LIKE, "Java", "Kotlin", "Scala", "Groovy"),
-    /** JavaScript and TypeScript: module specifiers in import/require. */
-    JAVASCRIPT(SourceScanner.Syntax.JS, "JavaScript", "TypeScript");
+    /** JavaScript, TypeScript and Vue/Svelte components: module specifiers in import/require. */
+    JAVASCRIPT(SourceScanner.Syntax.JS, "JavaScript", "TypeScript", "Vue", "Svelte");
 
     private static final Map<String, LanguageFamily> BY_LANGUAGE = new HashMap<>();
 

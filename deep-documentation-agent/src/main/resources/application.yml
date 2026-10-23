@@ -70,6 +70,13 @@ graph:
   splitFraction: 0.3
   # ...but only if it has at least this many files
   splitMinFiles: 20
+  # JS/TS import aliases that are not declared in tsconfig.json/jsconfig.json, e.g. ones
+  # defined only in vite.config.ts or webpack.config.js. Key = import prefix, value =
+  # directory relative to the repository root. Example:
+  #   jsAliases:
+  #     "@": src
+  #     "@components": src/components
+  jsAliases: {}
 
 # Importance ranking
 #   package score = structureWeight * percentile(package PageRank)

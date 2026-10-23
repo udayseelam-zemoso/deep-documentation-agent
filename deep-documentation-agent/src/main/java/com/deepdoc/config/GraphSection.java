@@ -1,11 +1,24 @@
 package com.deepdoc.config;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 public class GraphSection {
     private boolean includeTests = false;
     private int minPackages = 5;
     private int maxPackages = 25;
     private double splitFraction = 0.3;
     private int splitMinFiles = 20;
+    /** JS/TS import prefix -> directory relative to the repository root, e.g. "@" -> "src". */
+    private Map<String, String> jsAliases = new LinkedHashMap<>();
+
+    public Map<String, String> getJsAliases() {
+        return jsAliases;
+    }
+
+    public void setJsAliases(Map<String, String> jsAliases) {
+        this.jsAliases = jsAliases == null ? new LinkedHashMap<>() : jsAliases;
+    }
 
     public boolean isIncludeTests() {
         return includeTests;

@@ -33,6 +33,7 @@ public final class EntryPointDetector {
                 Pattern.MULTILINE));
         PATTERNS.put(LanguageFamily.JAVASCRIPT, Pattern.compile(
                 "\\.listen\\s*\\(|\\bcreateServer\\s*\\(|\\bcreateRoot\\s*\\(|\\bReactDOM\\.render\\s*\\("
+                        + "|\\bcreateApp\\s*\\("                          // Vue
                         + "|\\b(?:router|app)\\.(?:get|post|put|patch|delete)\\s*\\("));
     }
 

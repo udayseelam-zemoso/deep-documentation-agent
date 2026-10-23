@@ -16,7 +16,7 @@ final class DependencyExtractors {
             case JVM:
                 return new JvmDependencyExtractor(sources, files);
             case JAVASCRIPT:
-                return new JsDependencyExtractor(sources);
+                return new JsDependencyExtractor(sources, files, config.getJsAliases());
             default:
                 throw new IllegalArgumentException("No extractor for " + family);
         }
