@@ -4,6 +4,8 @@ import java.nio.file.Path;
 
 /**
  * A location in the source that backs a claim, e.g. the import line behind a dependency edge.
+ * Generated documentation cites these so that every statement about the code can be checked.
+ * Lines are 1-based and inclusive.
  */
 public final class SourceReference {
     private final Path file;
@@ -18,6 +20,7 @@ public final class SourceReference {
         this.snippet = snippet;
     }
 
+    /** Reference to a single line, without a snippet. */
     public static SourceReference line(Path file, int line) {
         return new SourceReference(file, line, line, null);
     }
@@ -34,6 +37,7 @@ public final class SourceReference {
         return endLine;
     }
 
+    /** Quoted source text, or null when only the location is known. */
     public String getSnippet() {
         return snippet;
     }

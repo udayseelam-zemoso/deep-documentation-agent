@@ -1,6 +1,9 @@
 package com.deepdoc.ranker;
 
-/** How much documentation effort a file gets. */
+/**
+ * How much documentation effort a file gets. Large repositories cannot be documented file by
+ * file within a reasonable budget, so effort goes where readers need it most.
+ */
 public enum DocLevel {
     /** Own section: purpose, design, key flows, with source references. */
     DEEP,

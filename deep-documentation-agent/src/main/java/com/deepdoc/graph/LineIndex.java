@@ -2,7 +2,11 @@ package com.deepdoc.graph;
 
 import java.util.Arrays;
 
-/** Maps character offsets to 1-based line numbers. */
+/**
+ * Maps character offsets to 1-based line numbers. Extractors find dependencies with regular
+ * expressions over the whole file, which yield offsets; edges need line numbers as evidence.
+ * Line starts are recorded once, then each lookup is a binary search.
+ */
 final class LineIndex {
     private final int[] lineStarts;
 
@@ -21,6 +25,7 @@ final class LineIndex {
         this.lineStarts = Arrays.copyOf(starts, count);
     }
 
+    /** Line containing {@code offset}; a miss in the binary search points just past that line's start. */
     int lineOf(int offset) {
         int idx = Arrays.binarySearch(lineStarts, offset);
         return (idx >= 0 ? idx : -idx - 2) + 1;

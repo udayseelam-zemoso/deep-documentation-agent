@@ -167,6 +167,7 @@ public class DeepDocCLI implements Callable<Integer> {
         }
     }
 
+    /** Coverage counters, then one line per package with its outgoing package edges (strongest first). */
     private void printDependencyGraph(DependencyGraph graph) {
         Graph<PackageNode, PackageEdge> packages = graph.getPackageGraph();
         logger.info("");
@@ -222,6 +223,7 @@ public class DeepDocCLI implements Callable<Integer> {
         }
     }
 
+    /** Package table (score, structure and activity percentiles, Ca/Ce, role), then the top files. */
     private void printRanking(DependencyGraph graph, RankingResult ranking, int top) {
         logger.info("");
         logger.info("Importance Ranking ({})", ranking.usedActivity()

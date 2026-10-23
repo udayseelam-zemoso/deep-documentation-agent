@@ -7,7 +7,9 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Rolled-up edge {@code P -> Q}: some file in P depends on some file in Q.
+ * Rolled-up edge {@code P -> Q}: some file in P depends on some file in Q. It keeps up to
+ * {@value #MAX_EVIDENCE} source lines as evidence, so generated documentation can cite the
+ * import that creates the dependency instead of just asserting it.
  */
 public class PackageEdge {
     static final int MAX_EVIDENCE = 3;
@@ -24,14 +26,17 @@ public class PackageEdge {
         return importCount;
     }
 
+    /** Sum of the file edges' reference counts: how many times P's code mentions Q. */
     public int getReferenceCount() {
         return referenceCount;
     }
 
+    /** Up to {@value #MAX_EVIDENCE} lines where a file of P refers to a file of Q. */
     public List<SourceReference> getEvidence() {
         return Collections.unmodifiableList(evidence);
     }
 
+    /** Folds one crossing file edge into this package edge. */
     void add(DependencyEdge fileEdge) {
         importCount++;
         referenceCount += fileEdge.getReferenceCount();

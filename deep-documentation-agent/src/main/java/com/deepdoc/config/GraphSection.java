@@ -3,11 +3,21 @@ package com.deepdoc.config;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * The {@code graph} section of {@code application.yml}: which files enter the dependency graph,
+ * how they are grouped into packages ({@code com.deepdoc.graph.PackageGrouper}) and how
+ * imports and co-changes become edges.
+ */
 public class GraphSection {
+    /** Tests import everything they test and would look central, so they are excluded by default. */
     private boolean includeTests = false;
+    /** The package depth is increased until there are at least this many packages... */
     private int minPackages = 5;
+    /** ...but not beyond this many. */
     private int maxPackages = 25;
+    /** A package holding more than this share of all files is split one level deeper... */
     private double splitFraction = 0.3;
+    /** ...provided it has at least this many files. */
     private int splitMinFiles = 20;
     /** JS/TS import prefix -> directory relative to the repository root, e.g. "@" -> "src". */
     private Map<String, String> jsAliases = new LinkedHashMap<>();

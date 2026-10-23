@@ -22,6 +22,11 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * Read-only access to a repository's Git history through JGit (no {@code git} binary needed).
+ * Used to detect whether history exists and to read the commits behind the activity signal and
+ * the co-change edges. Close it after use; it holds the repository open.
+ */
 public class GitInterface implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(GitInterface.class);
     
@@ -49,10 +54,12 @@ public class GitInterface implements AutoCloseable {
         logger.info("Initialized Git interface for repository: {}", repository.getWorkTree());
     }
 
+    /** Root of the work tree; commit paths are relative to it. */
     public Path getWorkTree() {
         return repository.getWorkTree().toPath().toAbsolutePath().normalize();
     }
 
+    /** True if the repository has at least one commit. */
     public boolean hasGitHistory() {
         try {
             Iterable<RevCommit> commits = git.log().setMaxCount(1).call();
@@ -81,10 +88,12 @@ public class GitInterface implements AutoCloseable {
                     .setMaxCount(maxCommits)
                     .call();
             for (RevCommit commit : commits) {
+                // Merge commits repeat changes already counted on the merged branch.
                 if (commit.getParentCount() > 1) {
                     continue;
                 }
                 List<DiffEntry> diffs;
+                // The root commit has no parent to diff against: compare with an empty tree.
                 if (commit.getParentCount() == 0) {
                     diffs = formatter.scan(new EmptyTreeIterator(), new CanonicalTreeParser(null, reader, commit.getTree()));
                 } else {
@@ -110,6 +119,7 @@ public class GitInterface implements AutoCloseable {
         return records;
     }
 
+    /** Number of commits reachable from HEAD; reported in the repository summary. */
     public int getTotalCommitCount() {
         try {
             int count = 0;
@@ -123,6 +133,7 @@ public class GitInterface implements AutoCloseable {
         }
     }
 
+    /** Full messages of the newest commits, kept as context for the documentation step. */
     public List<String> getRecentCommitMessages(int maxCount) {
         List<String> messages = new ArrayList<>();
         try {

@@ -7,6 +7,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * A node of the package graph: a named group of files chosen by {@link PackageGrouper}.
+ * Equality is by name, which is unique within one graph.
+ */
 public class PackageNode {
     private final String name;
     private final List<FileInfo> files = new ArrayList<>();
@@ -21,15 +25,20 @@ public class PackageNode {
         return name;
     }
 
+    /** Member files, in the order they were added. */
     public List<FileInfo> getFiles() {
         return Collections.unmodifiableList(files);
     }
 
+    /** Sum of the members' lines of code; a size indicator for the report. */
     public int getTotalLines() {
         return totalLines;
     }
 
-    /** File-level dependencies whose source and target are both inside this package. */
+    /**
+     * File-level dependencies whose source and target are both inside this package. They do not
+     * become package edges (a package does not depend on itself) but indicate cohesion.
+     */
     public int getInternalDependencies() {
         return internalDependencies;
     }

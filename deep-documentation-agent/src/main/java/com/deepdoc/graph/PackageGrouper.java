@@ -13,7 +13,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Groups files into packages at an automatically chosen depth.
+ * Groups files into packages at an automatically chosen depth. The package graph is what a
+ * reader sees first ("the system has these 12 modules"), so it must have a readable number of
+ * nodes: two packages say nothing, two hundred are unreadable. Rather than ask the user for a
+ * depth, the grouper picks one per repository.
  *
  * <ol>
  *   <li>Strip the prefix shared by every file of a kind ({@code com.acme.shop}, {@code src}).</li>
@@ -24,10 +27,17 @@ import java.util.Set;
  * Files in languages with declared namespaces (Java/Kotlin packages, C# and PHP namespaces) are
  * keyed by that namespace, everything else by directory. Directory groups are displayed with a
  * trailing {@code /} so they never collide with namespace groups of the same name.
+ *
+ * <p>Example: files under {@code com.acme.shop.order.api}, {@code com.acme.shop.order.db} and
+ * {@code com.acme.shop.billing} lose the shared {@code com.acme.shop}; at depth 1 they form
+ * {@code order} and {@code billing}. If {@code order} held most of the repository it would be
+ * split into {@code order.api} and {@code order.db}.
  */
 public final class PackageGrouper {
+    /** Name of the group for files sitting directly at the stripped prefix (e.g. the repository root). */
     public static final String ROOT = "(root)";
 
+    /** How a file's package key was obtained, which decides its separator and display form. */
     public enum Kind {
         /** Dotted namespace such as {@code com.acme.order}. */
         NAMESPACE("."),
@@ -41,6 +51,7 @@ public final class PackageGrouper {
         }
     }
 
+    /** Package key of one file: its namespace or directory, split into segments. */
     public static final class Key {
         final Kind kind;
         final List<String> segments;
@@ -51,6 +62,7 @@ public final class PackageGrouper {
         }
     }
 
+    /** File-to-group assignment plus what was decided along the way, for reporting. */
     public static final class Result {
         private final Map<FileInfo, String> groupOf;
         private final int depth;
@@ -66,15 +78,18 @@ public final class PackageGrouper {
             return groupOf;
         }
 
+        /** Base depth chosen in step 2; split groups are one or more levels deeper. */
         public int getDepth() {
             return depth;
         }
 
+        /** Prefixes removed in step 1, one per kind that had one (e.g. "com.acme.shop", "src"). */
         public List<String> getStrippedPrefixes() {
             return strippedPrefixes;
         }
     }
 
+    /** Safety bound on step 3; each round splits at most one group. */
     private static final int MAX_SPLIT_ROUNDS = 20;
 
     private final GraphSection config;
@@ -83,10 +98,12 @@ public final class PackageGrouper {
         this.config = config;
     }
 
+    /** @param keys package key of every graph file */
     public Result group(Map<FileInfo, Key> keys) {
         Map<FileInfo, List<String>> relative = new LinkedHashMap<>();
         Map<FileInfo, Kind> kinds = new HashMap<>();
         List<String> prefixes = new ArrayList<>();
+        // Step 1, per kind: namespaces and directories have unrelated prefixes.
         for (Kind kind : Kind.values()) {
             List<List<String>> ofKind = new ArrayList<>();
             keys.values().stream().filter(k -> k.kind == kind).forEach(k -> ofKind.add(k.segments));
@@ -105,6 +122,7 @@ public final class PackageGrouper {
             });
         }
 
+        // Step 2: smallest depth giving enough groups; one step back if that overshoots the maximum.
         int maxLength = relative.values().stream().mapToInt(List::size).max().orElse(0);
         int depth = 1;
         while (depth < maxLength && countGroups(relative, kinds, depth) < config.getMinPackages()) {
@@ -114,6 +132,7 @@ public final class PackageGrouper {
             depth--;
         }
 
+        // Step 3: depth becomes per file, because only oversized groups go deeper.
         Map<FileInfo, Integer> depthOf = new HashMap<>();
         for (FileInfo file : relative.keySet()) {
             depthOf.put(file, depth);
@@ -125,6 +144,12 @@ public final class PackageGrouper {
         return new Result(groupOf, depth, prefixes);
     }
 
+    /**
+     * Repeatedly splits the largest group one level deeper while it holds more than
+     * {@code splitFraction} of all files and at least {@code splitMinFiles}. A group is marked
+     * unsplittable when going deeper would not divide it (all files in one sub-directory) or
+     * would push the total over {@code maxPackages}.
+     */
     private void splitOversizedGroups(Map<FileInfo, List<String>> relative, Map<FileInfo, Kind> kinds,
                                       Map<FileInfo, Integer> depthOf) {
         int total = relative.size();
@@ -162,12 +187,14 @@ public final class PackageGrouper {
         }
     }
 
+    /** Number of distinct groups if every file is cut at {@code depth}. */
     private static int countGroups(Map<FileInfo, List<String>> relative, Map<FileInfo, Kind> kinds, int depth) {
         Set<String> names = new HashSet<>();
         relative.forEach((file, rel) -> names.add(name(kinds.get(file), rel, depth)));
         return names.size();
     }
 
+    /** Display name of a group: first {@code depth} segments, with "/" appended for directories. */
     private static String name(Kind kind, List<String> rel, int depth) {
         String joined = rel.isEmpty() ? ROOT : String.join(kind.separator, rel.subList(0, Math.min(depth, rel.size())));
         return kind == Kind.DIRECTORY ? joined + "/" : joined;
@@ -193,6 +220,7 @@ public final class PackageGrouper {
         return length;
     }
 
+    /** Splits a namespace or path into non-empty segments. */
     static List<String> segments(String value, String separatorRegex) {
         if (value == null || value.isEmpty()) {
             return Collections.emptyList();

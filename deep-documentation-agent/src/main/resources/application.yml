@@ -59,7 +59,8 @@ git:
   bulkCommitFileLimit: 50
   maxCommitMessages: 100
 
-# Dependency graph (Java imports, JS/TS import/require)
+# Dependency graph: which files are ranked, how imports become edges, how files form packages.
+# See docs/README.md for the full approach.
 graph:
   # Test files import everything and would look central, so they are left out
   includeTests: false
@@ -99,8 +100,10 @@ ranking:
   dampingFactor: 0.85
   # Reverse edge weight relative to the forward one, so files that use a lot also gain rank
   backEdgeFactor: 0.25
+  # Package score = structureWeight * pct(PageRank) + activityWeight * pct(activity)
   structureWeight: 0.6
   activityWeight: 0.4
+  # File score inside its package (structure, activity, boundary bonus)
   localStructureWeight: 0.5
   localActivityWeight: 0.3
   localBoundaryWeight: 0.2

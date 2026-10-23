@@ -67,6 +67,8 @@ public class DependencyGraphBuilder {
         int excludedTests = 0;
         int nonCode = 0;
 
+        // Step 1: choose the files to rank. Sorting makes the graph, and therefore the ranking,
+        // independent of file-system iteration order.
         List<FileInfo> files = new ArrayList<>(manifest.getFiles());
         files.sort(Comparator.comparing(f -> f.getFilePath().toString()));
         for (FileInfo file : files) {
@@ -92,6 +94,8 @@ public class DependencyGraphBuilder {
             languageCounts.merge(file.getLanguage(), 1, Integer::sum);
         }
 
+        // Step 2: one extractor per language family, created with all its files so it can index
+        // declarations (packages, modules, types) before resolving any import.
         SourceSet sourceSet = new SourceSet(root, sources);
         Map<FileInfo, DependencyExtractor> extractorOf = new HashMap<>();
         filesByFamily.forEach((family, members) -> {
@@ -105,6 +109,8 @@ public class DependencyGraphBuilder {
             genericFiles.addAll(members);
         });
 
+        // Every selected file is a vertex, even with no edges, so isolated files are still ranked.
+        // Repeated dependencies on the same target merge into one edge with summed references.
         Graph<FileInfo, DependencyEdge> fileGraph = new DefaultDirectedGraph<>(DependencyEdge.class);
         sources.keySet().forEach(fileGraph::addVertex);
         for (FileInfo file : sources.keySet()) {
@@ -131,6 +137,8 @@ public class DependencyGraphBuilder {
             }
         }
 
+        // Step 3: group files into packages and roll file edges up. Edges inside one package only
+        // count towards its cohesion; crossing edges become (or strengthen) package edges.
         PackageGrouper.Result grouping = new PackageGrouper(config).group(packageKeys(root, fileGraph, extractorOf));
 
         Graph<PackageNode, PackageEdge> packageGraph = new DefaultDirectedGraph<>(PackageEdge.class);

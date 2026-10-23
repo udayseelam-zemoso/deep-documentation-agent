@@ -21,7 +21,11 @@ import java.util.Set;
 import java.util.function.ToDoubleFunction;
 
 /**
- * Two-level importance ranking.
+ * Decides which files deserve documentation, and how much, from two signals: <em>structure</em>
+ * (how central a file is in the dependency graph) and <em>activity</em> (how much it changed
+ * recently). The ranking works at two levels because readers think in modules first: a file
+ * that is central to an unimportant package should still rank below the key files of the
+ * package everything else depends on.
  *
  * <ol>
  *   <li>Packages: personalized PageRank on the package graph and recency-weighted activity,
@@ -33,6 +37,10 @@ import java.util.function.ToDoubleFunction;
  * Edge weights are {@code sqrt(count)} so one heavily used dependency cannot dominate, and every
  * edge gets a reverse edge of {@code backEdgeFactor} times its weight so high-level files that
  * use many others are not starved of rank. Entry points get a larger teleport prior.
+ *
+ * <p>Without Git history the activity terms are dropped and the remaining weights are
+ * re-normalized, so scores stay in [0, 1] either way. See {@code docs/README.md} for a worked
+ * example of the whole computation.
  */
 public class ImportanceRanker {
     private static final Logger logger = LoggerFactory.getLogger(ImportanceRanker.class);
@@ -43,13 +51,23 @@ public class ImportanceRanker {
         this.config = config;
     }
 
+    /**
+     * Ranks every package and file of the graph, assigns a {@link DocLevel} to each file and
+     * stores the final priority on {@link FileInfo#setImportanceScore}.
+     *
+     * @param activity    recency-weighted commit counts; {@link ActivityScores#none()} when there is no history
+     * @param entryPoints files where execution enters the system (see {@link EntryPointDetector})
+     */
     public RankingResult rank(DependencyGraph graph, ActivityScores activity, Set<FileInfo> entryPoints) {
         boolean useActivity = activity.hasHistory();
         List<PackageRank> packageRanks = rankPackages(graph, activity, entryPoints, useActivity);
         Map<PackageNode, PackageRank> byNode = new HashMap<>();
         packageRanks.forEach(p -> byNode.put(p.getNode(), p));
 
+        // File-level PageRank runs on the whole file graph (not per package), so a file used
+        // from many packages ranks above one used only by its neighbours.
         Graph<FileInfo, DependencyEdge> fileGraph = graph.getFileGraph();
+        // Sorted so that results do not depend on hash order: the same repository always ranks the same.
         List<FileInfo> files = new ArrayList<>(fileGraph.vertexSet());
         files.sort(Comparator.comparing(f -> f.getFilePath().toString()));
         Map<FileInfo, Map<FileInfo, Double>> fileEdges = new HashMap<>();
@@ -57,6 +75,8 @@ public class ImportanceRanker {
             addWithBackEdge(fileEdges, fileGraph.getEdgeSource(edge), fileGraph.getEdgeTarget(edge),
                     Math.sqrt(edge.getReferenceCount()));
         }
+        // Teleport prior: a random reader "starts" at an entry point N times as often as at any
+        // other file, so everything reachable from main() / controllers gains rank.
         Map<FileInfo, Double> filePrior = new HashMap<>();
         for (FileInfo file : files) {
             filePrior.put(file, entryPoints.contains(file) ? 1.0 + files.size() : 1.0);
@@ -64,6 +84,9 @@ public class ImportanceRanker {
         Map<FileInfo, Double> filePageRank =
                 WeightedPageRank.compute(files, fileEdges, filePrior, config.getDampingFactor());
 
+        // Local score: how important a file is *within its package*. Each signal is divided by
+        // the best value in the same package, so every package has a file with structure = 1.
+        // Activity uses ln(1 + x) because commit counts are heavy-tailed.
         List<FileRank> fileRanks = new ArrayList<>();
         for (PackageNode node : graph.getPackages()) {
             List<FileInfo> members = node.getFiles();
@@ -71,9 +94,12 @@ public class ImportanceRanker {
             double maxActivity = members.stream().mapToDouble(f -> Math.log1p(activity.file(f))).max().orElse(0);
             for (FileInfo file : members) {
                 boolean entry = entryPoints.contains(file);
+                // Boundary files form the package's public face: entry points and files that
+                // other packages depend on. Documenting them explains how the package is used.
                 boolean boundary = entry || usedFromOtherPackage(graph, file);
                 double structure = maxPr > 0 ? filePageRank.get(file) / maxPr : 0;
                 double act = maxActivity > 0 ? Math.log1p(activity.file(file)) / maxActivity : 0;
+                // Without history, structure and boundary are re-weighted to sum to 1.
                 double local = useActivity
                         ? config.getLocalStructureWeight() * structure
                           + config.getLocalActivityWeight() * act
@@ -86,6 +112,8 @@ public class ImportanceRanker {
             }
         }
 
+        // Priority = package score x local score (computed in FileRank). Ties are broken by the
+        // package score, then by path, to keep the order deterministic.
         fileRanks.sort(Comparator.comparingDouble(FileRank::getPriority).reversed()
                 .thenComparing(Comparator.comparingDouble((FileRank f) -> f.getPackageRank().getScore()).reversed())
                 .thenComparing(f -> f.getFile().getFilePath().toString()));
@@ -97,6 +125,11 @@ public class ImportanceRanker {
         return new RankingResult(packageRanks, fileRanks, useActivity);
     }
 
+    /**
+     * Package score = weighted blend of percentile(PageRank) and percentile(ln(1 + activity)).
+     * Percentiles rather than raw values because PageRank and commit counts live on completely
+     * different scales; percentiles make them comparable and robust to one outlier package.
+     */
     private List<PackageRank> rankPackages(DependencyGraph graph, ActivityScores activity,
                                            Set<FileInfo> entryPoints, boolean useActivity) {
         Graph<PackageNode, PackageEdge> packageGraph = graph.getPackageGraph();
@@ -106,6 +139,7 @@ public class ImportanceRanker {
             addWithBackEdge(edges, packageGraph.getEdgeSource(edge), packageGraph.getEdgeTarget(edge),
                     Math.sqrt(edge.getImportCount()));
         }
+        // Packages containing an entry point get the same boosted teleport prior as entry files.
         Map<PackageNode, Double> prior = new HashMap<>();
         for (PackageNode node : packages) {
             boolean hasEntry = node.getFiles().stream().anyMatch(entryPoints::contains);
@@ -144,6 +178,7 @@ public class ImportanceRanker {
             return;
         }
         int deepCount = Math.max(1, (int) Math.round(config.getDeepFraction() * ranked.size()));
+        // Packages that already have a DEEP file do not need an extra SUMMARY representative.
         Set<String> packagesWithSummary = new HashSet<>();
         Map<String, FileRank> bestInPackage = new LinkedHashMap<>();
         for (FileRank f : ranked) {
@@ -167,6 +202,7 @@ public class ImportanceRanker {
         }
     }
 
+    /** True if at least one file of another package depends on {@code file}. */
     private boolean usedFromOtherPackage(DependencyGraph graph, FileInfo file) {
         Graph<FileInfo, DependencyEdge> fileGraph = graph.getFileGraph();
         PackageNode own = graph.packageOf(file);
@@ -178,6 +214,12 @@ public class ImportanceRanker {
         return false;
     }
 
+    /**
+     * Adds {@code from -> to} with {@code weight}, plus the reverse edge with
+     * {@code backEdgeFactor * weight}. Plain PageRank only rewards being depended on, which
+     * ranks utility classes above the orchestrators that tie a system together; the weaker
+     * reverse edge lets "uses many important things" count too.
+     */
     private <V> void addWithBackEdge(Map<V, Map<V, Double>> edges, V from, V to, double weight) {
         edges.computeIfAbsent(from, k -> new HashMap<>()).merge(to, weight, Double::sum);
         if (config.getBackEdgeFactor() > 0) {

@@ -2,6 +2,10 @@ package com.deepdoc.ranker;
 
 import com.deepdoc.graph.PackageNode;
 
+/**
+ * Ranking of one package: raw PageRank and activity, their percentiles among all packages, the
+ * blended score, and the coupling numbers (Ca/Ce) with the resulting {@link PackageRole}.
+ */
 public final class PackageRank {
     private final PackageNode node;
     private final double pageRank;
@@ -34,6 +38,7 @@ public final class PackageRank {
         return node.getName();
     }
 
+    /** Package-graph PageRank (all packages sum to 1). */
     public double getPageRank() {
         return pageRank;
     }
@@ -43,14 +48,17 @@ public final class PackageRank {
         return activity;
     }
 
+    /** Position of the package's PageRank among all packages: 0 = lowest, 1 = highest. */
     public double getStructurePercentile() {
         return structurePercentile;
     }
 
+    /** Position of ln(1 + activity) among all packages; 0 when history is not used. */
     public double getActivityPercentile() {
         return activityPercentile;
     }
 
+    /** Blend of the two percentiles (weights from the {@code ranking} config), 0..1. */
     public double getScore() {
         return score;
     }
@@ -65,6 +73,7 @@ public final class PackageRank {
         return efferent;
     }
 
+    /** Architectural role derived from Ca and Ce; used to phrase the package's documentation. */
     public PackageRole getRole() {
         return role;
     }
