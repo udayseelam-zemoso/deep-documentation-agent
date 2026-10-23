@@ -1,0 +1,254 @@
+# =============================================================================
+# Language catalog
+# File: src/main/resources/languages.yml
+#
+# Tells the analyzer which files to look at and what kind of file each one is.
+# A file is matched in this order:
+#   1. filenames     exact file name (e.g. Dockerfile). An entry ending in ".*"
+#                    is a prefix match, so "Dockerfile.*" also covers Dockerfile.prod
+#   2. extensions    the longest matching extension wins (case-insensitive)
+#   3. interpreters  for files without an extension, the program named on the
+#                    "#!" line (e.g. "#!/usr/bin/env python3" -> python)
+# Files that match nothing are skipped entirely.
+#
+# type decides what the rest of the pipeline does with the file:
+#   programming  parsed for dependencies and ranked by importance
+#   markup       HTML/CSS/XML - counted and used as context, not ranked
+#   data         JSON/YAML/SQL/... - counted and used as context, not ranked
+#   prose        documentation - counted and used as context, not ranked
+#   config       build, container and infrastructure files - counted, not ranked
+#
+# Names and extensions follow GitHub Linguist where possible. To support a new
+# language, add an entry here and rebuild; no code change is needed for it to
+# be discovered and ranked through the generic fallback.
+# =============================================================================
+languages:
+  # --- JVM -------------------------------------------------------------------
+  - name: Java
+    type: programming
+    extensions: [.java]
+  - name: Kotlin
+    type: programming
+    extensions: [.kt, .kts]
+  - name: Scala
+    type: programming
+    extensions: [.scala, .sc]
+  - name: Groovy
+    type: programming
+    extensions: [.groovy, .gvy]
+    filenames: [Jenkinsfile]
+    interpreters: [groovy]
+  - name: Clojure
+    type: programming
+    extensions: [.clj, .cljs, .cljc]
+
+  # --- Web -------------------------------------------------------------------
+  - name: JavaScript
+    type: programming
+    extensions: [.js, .jsx, .mjs, .cjs]
+    interpreters: [node, nodejs]
+  - name: TypeScript
+    type: programming
+    extensions: [.ts, .tsx, .mts, .cts]
+    interpreters: [ts-node, deno, bun]
+  - name: Vue
+    type: programming
+    extensions: [.vue]
+  - name: Svelte
+    type: programming
+    extensions: [.svelte]
+  - name: PHP
+    type: programming
+    extensions: [.php, .phtml]
+    interpreters: [php]
+
+  # --- Scripting -------------------------------------------------------------
+  - name: Python
+    type: programming
+    extensions: [.py, .pyw, .pyi]
+    interpreters: [python]
+  - name: Ruby
+    type: programming
+    extensions: [.rb, .rake, .gemspec]
+    filenames: [Rakefile, Gemfile]
+    interpreters: [ruby]
+  - name: Perl
+    type: programming
+    extensions: [.pl, .pm]
+    interpreters: [perl]
+  - name: Lua
+    type: programming
+    extensions: [.lua]
+    interpreters: [lua]
+  - name: R
+    type: programming
+    extensions: [.r]
+    interpreters: [Rscript]
+  - name: Julia
+    type: programming
+    extensions: [.jl]
+    interpreters: [julia]
+  - name: Shell
+    type: programming
+    extensions: [.sh, .bash, .zsh, .ksh]
+    interpreters: [sh, bash, zsh, dash, ksh]
+  - name: PowerShell
+    type: programming
+    extensions: [.ps1, .psm1]
+    interpreters: [pwsh]
+  - name: Batchfile
+    type: programming
+    extensions: [.bat, .cmd]
+
+  # --- Systems ---------------------------------------------------------------
+  - name: C
+    type: programming
+    extensions: [.c]
+  - name: C++
+    type: programming
+    extensions: [.cpp, .cc, .cxx, .c++, .hpp, .hh, .hxx, .ipp]
+  # .h is shared by C and C++; both use the same #include resolution
+  - name: C/C++
+    type: programming
+    extensions: [.h]
+  - name: Objective-C
+    type: programming
+    extensions: [.m, .mm]
+  - name: Rust
+    type: programming
+    extensions: [.rs]
+  - name: Go
+    type: programming
+    extensions: [.go]
+  - name: Zig
+    type: programming
+    extensions: [.zig]
+  - name: Nim
+    type: programming
+    extensions: [.nim]
+
+  # --- .NET ------------------------------------------------------------------
+  - name: C#
+    type: programming
+    extensions: [.cs, .csx]
+  - name: F#
+    type: programming
+    extensions: [.fs, .fsx, .fsi]
+  - name: Visual Basic .NET
+    type: programming
+    extensions: [.vb]
+
+  # --- Mobile ----------------------------------------------------------------
+  - name: Swift
+    type: programming
+    extensions: [.swift]
+  - name: Dart
+    type: programming
+    extensions: [.dart]
+
+  # --- Functional / BEAM -----------------------------------------------------
+  - name: Elixir
+    type: programming
+    extensions: [.ex, .exs]
+    interpreters: [elixir]
+  - name: Erlang
+    type: programming
+    extensions: [.erl, .hrl]
+    interpreters: [escript]
+  - name: Haskell
+    type: programming
+    extensions: [.hs, .lhs]
+  - name: OCaml
+    type: programming
+    extensions: [.ml, .mli]
+  - name: Elm
+    type: programming
+    extensions: [.elm]
+  - name: Crystal
+    type: programming
+    extensions: [.cr]
+
+  # --- Other -----------------------------------------------------------------
+  - name: Solidity
+    type: programming
+    extensions: [.sol]
+
+  # --- Markup / styles -------------------------------------------------------
+  - name: HTML
+    type: markup
+    extensions: [.html, .htm]
+  - name: XML
+    type: markup
+    extensions: [.xml, .xsd, .xsl]
+  - name: CSS
+    type: markup
+    extensions: [.css]
+  - name: SCSS
+    type: markup
+    extensions: [.scss]
+  - name: Sass
+    type: markup
+    extensions: [.sass]
+  - name: LESS
+    type: markup
+    extensions: [.less]
+  - name: Handlebars
+    type: markup
+    extensions: [.hbs, .handlebars]
+
+  # --- Data / schemas --------------------------------------------------------
+  - name: JSON
+    type: data
+    extensions: [.json, .jsonc]
+  - name: YAML
+    type: data
+    extensions: [.yaml, .yml]
+  - name: TOML
+    type: data
+    extensions: [.toml]
+  - name: INI
+    type: data
+    extensions: [.ini]
+  - name: Java Properties
+    type: data
+    extensions: [.properties]
+  - name: SQL
+    type: data
+    extensions: [.sql]
+  - name: Protocol Buffers
+    type: data
+    extensions: [.proto]
+  - name: GraphQL
+    type: data
+    extensions: [.graphql, .gql]
+
+  # --- Documentation ---------------------------------------------------------
+  - name: Markdown
+    type: prose
+    extensions: [.md, .markdown]
+  - name: reStructuredText
+    type: prose
+    extensions: [.rst]
+  - name: AsciiDoc
+    type: prose
+    extensions: [.adoc]
+
+  # --- Build / infrastructure ------------------------------------------------
+  - name: Dockerfile
+    type: config
+    extensions: [.dockerfile]
+    filenames: [Dockerfile, Containerfile, "Dockerfile.*"]
+  - name: Makefile
+    type: config
+    extensions: [.mk]
+    filenames: [Makefile, GNUmakefile, makefile]
+  - name: CMake
+    type: config
+    extensions: [.cmake]
+    filenames: [CMakeLists.txt]
+  - name: Gradle
+    type: config
+    extensions: [.gradle]
+  - name: HCL
+    type: config
+    extensions: [.tf, .tfvars, .hcl]

@@ -17,7 +17,10 @@ class ConfigLoaderTest {
         assertThat(config.getAnalysis().getIgnoreExtensions())
                 .contains(".class", ".jar", ".min.js");
         assertThat(config.getGit().isEnabled()).isTrue();
-        assertThat(config.getGit().getChurnAnalysisMonths()).isEqualTo(6);
+        assertThat(config.getGit().getHalfLifeDays()).isEqualTo(180);
+        assertThat(config.getGraph().isIncludeTests()).isFalse();
+        assertThat(config.getRanking().getDampingFactor()).isEqualTo(0.85);
+        assertThat(config.getRanking().getDeepFraction()).isEqualTo(0.2);
         assertThat(config.getOutput().getDefaultDirectory()).isEqualTo("docs");
         assertThat(config.getLlm().getProvider()).isEqualTo("openai");
     }
