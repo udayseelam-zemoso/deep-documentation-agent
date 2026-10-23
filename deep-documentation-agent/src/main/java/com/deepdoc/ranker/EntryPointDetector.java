@@ -35,6 +35,33 @@ public final class EntryPointDetector {
                 "\\.listen\\s*\\(|\\bcreateServer\\s*\\(|\\bcreateRoot\\s*\\(|\\bReactDOM\\.render\\s*\\("
                         + "|\\bcreateApp\\s*\\("                          // Vue
                         + "|\\b(?:router|app)\\.(?:get|post|put|patch|delete)\\s*\\("));
+        PATTERNS.put(LanguageFamily.PYTHON, Pattern.compile(
+                "\\b__name__\\s*==" // if __name__ == "__main__": (the string itself is blanked)
+                        + "|^\\s*@\\w+\\.(?:route|get|post|put|patch|delete|command|task)\\s*\\(" // Flask, FastAPI, click, Celery
+                        + "|\\b(?:FastAPI|Flask)\\s*\\(|\\bclick\\.group\\s*\\(",
+                Pattern.MULTILINE));
+        PATTERNS.put(LanguageFamily.GO, Pattern.compile(
+                "^func\\s+main\\s*\\(\\s*\\)"
+                        + "|\\bhttp\\.(?:HandleFunc|Handle|ListenAndServe)\\s*\\("
+                        + "|\\.(?:GET|POST|PUT|PATCH|DELETE)\\s*\\(", // gin, echo
+                Pattern.MULTILINE));
+        PATTERNS.put(LanguageFamily.CSHARP, Pattern.compile(
+                "\\bstatic\\s+(?:async\\s+)?(?:void|int|Task(?:<int>)?)\\s+Main\\s*\\("
+                        + "|\\[ApiController\\]|:\\s*(?:Controller|ControllerBase)\\b"
+                        + "|\\bWebApplication\\.CreateBuilder\\s*\\("));
+        PATTERNS.put(LanguageFamily.C_FAMILY, Pattern.compile(
+                "^\\s*(?:int|void)\\s+main\\s*\\(|\\bUIApplicationMain\\s*\\(", Pattern.MULTILINE));
+        PATTERNS.put(LanguageFamily.RUST, Pattern.compile(
+                "^\\s*(?:pub\\s+)?(?:async\\s+)?fn\\s+main\\s*\\(|#\\[(?:tokio|actix_web|async_std)::main\\]",
+                Pattern.MULTILINE));
+        PATTERNS.put(LanguageFamily.RUBY, Pattern.compile(
+                "<\\s*(?:ApplicationController|ActionController::Base|ActionController::API|Sinatra::Base)\\b"
+                        + "|^\\s*(?:get|post|put|patch|delete)\\s+['\"/]",
+                Pattern.MULTILINE));
+        PATTERNS.put(LanguageFamily.PHP, Pattern.compile(
+                "\\bextends\\s+\\\\?(?:\\w+\\\\)*(?:Controller|AbstractController)\\b|\\bRoute::\\w+\\s*\\("));
+        PATTERNS.put(LanguageFamily.SWIFT, Pattern.compile(
+                "^\\s*@(?:main|UIApplicationMain|NSApplicationMain)\\b", Pattern.MULTILINE));
     }
 
     private EntryPointDetector() {
@@ -53,6 +80,11 @@ public final class EntryPointDetector {
 
     static boolean isEntryPoint(String language, String source) {
         LanguageFamily family = LanguageFamily.of(language);
+        if (family == LanguageFamily.SHELL) {
+            // A script with a shebang is meant to be executed directly; one without is a library
+            // that other scripts source. The shebang is a comment, so check the raw text.
+            return source.startsWith("#!");
+        }
         Pattern pattern = family == null ? null : PATTERNS.get(family);
         if (pattern == null) {
             return false;

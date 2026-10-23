@@ -97,7 +97,8 @@ final class SourceSet {
         return best;
     }
 
-    private int sharedDirectories(FileInfo a, FileInfo b) {
+    /** Number of leading directory names the two files' parent directories have in common. */
+    static int sharedDirectories(FileInfo a, FileInfo b) {
         Path pa = normalize(a.getFilePath()).getParent();
         Path pb = normalize(b.getFilePath()).getParent();
         int shared = 0;
