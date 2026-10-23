@@ -11,7 +11,7 @@ The Deep Documentation Agent automatically analyzes code structure, infers archi
 - **Fully Autonomous**: Requires zero user input - just point it at a repository
 - **Explanatory Documentation**: Captures the "why" behind design decisions, not just the "what"
 - **Verifiable Claims**: Every generated claim links to specific source code locations
-- **Multi-Language Support**: Java and JavaScript/TypeScript in MVP
+- **Multi-Language Support**: dedicated dependency extraction for Java/Kotlin/Scala, JS/TS, Python, Go, C#, C/C++, Rust, Ruby, PHP, Swift and shell, plus a generic fallback for every other language
 - **Architecture Detection**: Automatically detects Spring Boot, React, Express.js, and more
 - **Git History Analysis**: Extracts insights from commit history and code churn
 - **Fast Processing**: Processes 100K-line repositories in 30-60 minutes
@@ -136,6 +136,28 @@ mvn test
 - ✓ Tunable from the `graph`, `git` and `ranking` sections of `application.yml`
 
 `analyze` now also prints the package graph, the ranked packages (with Ca/Ce and role) and the top files; use `--top N` to change how many.
+
+**Language coverage** ✓
+- Languages are defined in `src/main/resources/languages.yml` (about 65 entries: extensions, special file names such as `Dockerfile`, and shebang interpreters). Add a language there; no code change is needed for it to be detected.
+- Dedicated dependency extractors (`com.deepdoc.graph.*DependencyExtractor`):
+
+| Family | Languages | What becomes an edge |
+|---|---|---|
+| JVM | Java, Kotlin, Scala, Groovy | imports, wildcard imports, fully-qualified names without an import, same-package types |
+| JavaScript | JS, TS, Vue, Svelte | relative imports, `tsconfig`/`jsconfig` `paths` and `baseUrl` (with `extends`), workspace packages, `graph.jsAliases`, `@/` and `~/` |
+| Python | Python | `import` / `from … import`, relative imports, submodule imports |
+| Go | Go | import paths resolved via `go.mod`, linked to the file declaring the used identifier |
+| C# | C# | `using` (incl. static, alias, global), namespaces, qualified type names |
+| C family | C, C++, Objective-C | `#include` / `#import` of project headers |
+| Rust | Rust | `mod x;`, `use` trees, `crate::` / `super::` / `self::` paths |
+| Ruby | Ruby | `require_relative`, `require`, Rails-style autoloaded constants |
+| PHP | PHP | `use` (incl. grouped), namespaces, `require`/`include` |
+| Swift | Swift | type names declared in exactly one or two files |
+| Shell | sh, bash, zsh | `source` / `.` |
+
+- Every other programming language (Clojure, Elixir, Dart, Lua, Haskell, Perl, Erlang, …) goes through `GenericDependencyExtractor`, which links quoted file paths, module names that map onto paths (`Data.Cart` to `Data/Cart.hs`, `Shop.CartItem` to `shop/cart_item.ex`) and type names declared in exactly one file.
+- For those fallback languages, files repeatedly committed together are also linked (`CoChangeEdges`, tunable with `graph.coChange*`).
+- Entry points and test-file conventions are recognised for every family above.
 
 ### Upcoming Work
 
