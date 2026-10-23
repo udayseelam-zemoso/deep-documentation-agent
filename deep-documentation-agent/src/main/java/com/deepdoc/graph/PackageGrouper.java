@@ -21,14 +21,17 @@ import java.util.Set;
  *       there are at least {@code minPackages} groups (backing off if that overshoots {@code maxPackages}).</li>
  *   <li>Split any group that still holds more than {@code splitFraction} of all files one level deeper.</li>
  * </ol>
- * Java files are keyed by their package declaration, everything else by directory.
- * Directory groups are displayed with a trailing {@code /} so they never collide with Java packages.
+ * Files in languages with declared namespaces (Java/Kotlin packages, C# and PHP namespaces) are
+ * keyed by that namespace, everything else by directory. Directory groups are displayed with a
+ * trailing {@code /} so they never collide with namespace groups of the same name.
  */
 public final class PackageGrouper {
     public static final String ROOT = "(root)";
 
     public enum Kind {
-        JAVA_PACKAGE("."),
+        /** Dotted namespace such as {@code com.acme.order}. */
+        NAMESPACE("."),
+        /** Directory path relative to the repository root. */
         DIRECTORY("/");
 
         final String separator;

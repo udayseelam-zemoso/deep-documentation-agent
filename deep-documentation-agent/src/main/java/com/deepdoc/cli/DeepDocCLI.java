@@ -167,8 +167,12 @@ public class DeepDocCLI implements Callable<Integer> {
         logger.info("");
         logger.info("Dependency Graph");
         logger.info("----------------");
-        logger.info("Files in graph: {} (tests excluded: {}, other languages not parsed: {})",
-                graph.getFileGraph().vertexSet().size(), graph.getExcludedTestFiles(), graph.getUnsupportedFiles());
+        logger.info("Files in graph: {} (tests excluded: {}, non-code files: {}, code without an extractor: {})",
+                graph.getFileGraph().vertexSet().size(), graph.getExcludedTestFiles(), graph.getNonCodeFiles(),
+                graph.getUnparsedCodeFiles());
+        logger.info("Languages in graph: {}", graph.getLanguageCounts().entrySet().stream()
+                .map(e -> e.getKey() + " " + e.getValue())
+                .collect(Collectors.joining(", ")));
         logger.info("File dependencies: {}", graph.getFileGraph().edgeSet().size());
         logger.info("Packages: {} at depth {}{}", packages.vertexSet().size(), graph.getGroupingDepth(),
                 graph.getStrippedPrefixes().isEmpty() ? ""

@@ -5,7 +5,6 @@ import com.deepdoc.model.FileInfo;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -13,70 +12,66 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Finds dependencies between JavaScript/TypeScript files from ES module imports,
- * re-exports, {@code require(...)} and dynamic {@code import(...)}.
+ * Dependencies between JavaScript/TypeScript files, read from module specifiers in
+ * {@code import ... from 'x'}, {@code export ... from 'x'}, side-effect {@code import 'x'},
+ * {@code require('x')} and dynamic {@code import('x')}.
  *
- * <p>Only relative specifiers ({@code ./x}, {@code ../x}) are resolved; bare specifiers are
- * npm packages, and path aliases such as {@code @/x} are not resolved yet.
+ * <p>A specifier is turned into a file the way bundlers do: try the exact path, then the path
+ * plus each known extension, then {@code <path>/index.<ext>}. TypeScript ESM code writes
+ * {@code './x.js'} for a file that is {@code x.ts} on disk, so that rewrite is tried too.
+ * Only relative specifiers are resolved; bare specifiers ({@code 'react'}) are npm packages.
+ * Each statement counts as one reference.
  */
-final class JsDependencyExtractor {
+final class JsDependencyExtractor implements DependencyExtractor {
     private static final List<Pattern> PATTERNS = Arrays.asList(
             Pattern.compile("\\b(?:import|export)\\s+(?:type\\s+)?[\\w*{}\\s,$]*?\\s*from\\s*['\"]([^'\"\\n]+)['\"]"),
             Pattern.compile("\\bimport\\s*['\"]([^'\"\\n]+)['\"]"),
             Pattern.compile("\\brequire\\s*\\(\\s*['\"]([^'\"\\n]+)['\"]\\s*\\)"),
             Pattern.compile("\\bimport\\s*\\(\\s*['\"]([^'\"\\n]+)['\"]\\s*\\)")
     );
-    private static final List<String> EXTENSIONS = Arrays.asList(".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs");
+    static final List<String> EXTENSIONS = Arrays.asList(".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs");
 
-    private final Map<Path, FileInfo> filesByPath;
+    private final SourceSet sources;
 
-    JsDependencyExtractor(Map<Path, FileInfo> filesByPath) {
-        this.filesByPath = filesByPath;
+    JsDependencyExtractor(SourceSet sources) {
+        this.sources = sources;
     }
 
-    List<RawDependency> extract(FileInfo file, String source) {
-        LineIndex lines = new LineIndex(source);
-        // Keyed by match offset so overlapping patterns never count the same statement twice.
+    @Override
+    public List<RawDependency> extract(FileInfo file) {
+        String code = SourceScanner.blankComments(sources.source(file), SourceScanner.Syntax.JS);
+        LineIndex lines = new LineIndex(code);
+        // Keyed by offset so a statement matched by two patterns is only counted once.
         Map<Integer, String> specifiers = new TreeMap<>();
         for (Pattern pattern : PATTERNS) {
-            Matcher m = pattern.matcher(source);
+            Matcher m = pattern.matcher(code);
             while (m.find()) {
                 specifiers.putIfAbsent(m.start(1), m.group(1));
             }
         }
 
-        Map<FileInfo, int[]> found = new LinkedHashMap<>();
-        specifiers.forEach((offset, spec) -> {
-            FileInfo target = resolve(file.getFilePath(), spec);
-            if (target == null || target.equals(file)) {
-                return;
-            }
-            int[] entry = found.get(target);
-            if (entry == null) {
-                found.put(target, new int[]{1, lines.lineOf(offset)});
-            } else {
-                entry[0]++;
-            }
-        });
-
-        List<RawDependency> result = new ArrayList<>();
-        found.forEach((target, v) -> result.add(new RawDependency(file, target, v[0], v[1])));
-        return result;
+        DependencyCollector deps = new DependencyCollector(file);
+        specifiers.forEach((offset, spec) -> deps.add(resolve(file, spec), 1, lines.lineOf(offset)));
+        return deps.toList();
     }
 
-    private FileInfo resolve(Path from, String spec) {
+    FileInfo resolve(FileInfo from, String spec) {
         if (!spec.startsWith(".")) {
             return null;
         }
-        Path base = from.toAbsolutePath().getParent().resolve(spec).normalize();
+        return resolveFile(SourceSet.normalize(from.getFilePath()).getParent().resolve(spec).normalize());
+    }
+
+    /** Applies the bundler lookup rules to an absolute path without extension guessing done yet. */
+    FileInfo resolveFile(Path base) {
         List<Path> candidates = new ArrayList<>();
         candidates.add(base);
         String baseName = base.getFileName() == null ? "" : base.getFileName().toString();
-        if (baseName.endsWith(".js") || baseName.endsWith(".jsx")) {
-            // TypeScript ESM code imports "./x.js" while the file on disk is x.ts
+        if (baseName.endsWith(".js") || baseName.endsWith(".jsx") || baseName.endsWith(".mjs")) {
             String stem = baseName.substring(0, baseName.lastIndexOf('.'));
             candidates.add(base.resolveSibling(stem + ".ts"));
             candidates.add(base.resolveSibling(stem + ".tsx"));
+            candidates.add(base.resolveSibling(stem + ".mts"));
         }
         for (String ext : EXTENSIONS) {
             candidates.add(base.resolveSibling(baseName + ext));
@@ -85,7 +80,7 @@ final class JsDependencyExtractor {
             candidates.add(base.resolve("index" + ext));
         }
         for (Path candidate : candidates) {
-            FileInfo target = filesByPath.get(candidate);
+            FileInfo target = sources.at(candidate);
             if (target != null) {
                 return target;
             }

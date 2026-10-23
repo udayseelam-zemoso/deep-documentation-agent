@@ -22,7 +22,9 @@ public final class DependencyGraph {
     private final int groupingDepth;
     private final List<String> strippedPrefixes;
     private final int excludedTestFiles;
-    private final int unsupportedFiles;
+    private final int nonCodeFiles;
+    private final int unparsedCodeFiles;
+    private final Map<String, Integer> languageCounts;
 
     DependencyGraph(Path repositoryRoot,
                     Graph<FileInfo, DependencyEdge> fileGraph,
@@ -31,7 +33,9 @@ public final class DependencyGraph {
                     int groupingDepth,
                     List<String> strippedPrefixes,
                     int excludedTestFiles,
-                    int unsupportedFiles) {
+                    int nonCodeFiles,
+                    int unparsedCodeFiles,
+                    Map<String, Integer> languageCounts) {
         this.repositoryRoot = repositoryRoot;
         this.fileGraph = fileGraph;
         this.packageGraph = packageGraph;
@@ -39,7 +43,9 @@ public final class DependencyGraph {
         this.groupingDepth = groupingDepth;
         this.strippedPrefixes = strippedPrefixes;
         this.excludedTestFiles = excludedTestFiles;
-        this.unsupportedFiles = unsupportedFiles;
+        this.nonCodeFiles = nonCodeFiles;
+        this.unparsedCodeFiles = unparsedCodeFiles;
+        this.languageCounts = languageCounts;
     }
 
     public Path getRepositoryRoot() {
@@ -86,9 +92,19 @@ public final class DependencyGraph {
         return excludedTestFiles;
     }
 
-    /** Discovered files in languages without a dependency extractor (not part of the graph). */
-    public int getUnsupportedFiles() {
-        return unsupportedFiles;
+    /** Markup, data, prose and config files: counted in the manifest, not ranked. */
+    public int getNonCodeFiles() {
+        return nonCodeFiles;
+    }
+
+    /** Programming-language files that no extractor understands and that were left out of the graph. */
+    public int getUnparsedCodeFiles() {
+        return unparsedCodeFiles;
+    }
+
+    /** Number of graph files per language, sorted by language name. */
+    public Map<String, Integer> getLanguageCounts() {
+        return Collections.unmodifiableMap(languageCounts);
     }
 
     public String relativePath(FileInfo file) {

@@ -19,7 +19,7 @@ class PackageGrouperTest {
     private void add(Map<FileInfo, PackageGrouper.Key> keys, String pkg, int files) {
         for (int i = 0; i < files; i++) {
             FileInfo file = new FileInfo(Paths.get("/repo/F" + (counter++) + ".java"), "Java", 10, LocalDateTime.now());
-            keys.put(file, new PackageGrouper.Key(PackageGrouper.Kind.JAVA_PACKAGE, Arrays.asList(pkg.split("\\."))));
+            keys.put(file, new PackageGrouper.Key(PackageGrouper.Kind.NAMESPACE, Arrays.asList(pkg.split("\\."))));
         }
     }
 
