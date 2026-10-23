@@ -64,6 +64,17 @@ public final class EntryPointDetector {
                 "^\\s*@(?:main|UIApplicationMain|NSApplicationMain)\\b", Pattern.MULTILINE));
     }
 
+    /**
+     * Languages handled by the generic fallback: a function named {@code main} (Dart, Zig, Julia,
+     * Nim, Clojure's {@code -main}, Haskell's {@code main =}) or an Elixir/Erlang application.
+     * Matched on the raw source, since their comment syntax is not always known.
+     */
+    private static final Pattern GENERIC = Pattern.compile(
+            "\\b(?:void|fn|func|function|def|defn|sub|proc)\\s+-?main\\b"
+                    + "|^main\\s*(?:::|=)"
+                    + "|\\buse\\s+Application\\b|-behaviou?r\\(\\s*application\\s*\\)",
+            Pattern.MULTILINE);
+
     private EntryPointDetector() {
     }
 
@@ -85,7 +96,10 @@ public final class EntryPointDetector {
             // that other scripts source. The shebang is a comment, so check the raw text.
             return source.startsWith("#!");
         }
-        Pattern pattern = family == null ? null : PATTERNS.get(family);
+        if (family == null) {
+            return GENERIC.matcher(source).find();
+        }
+        Pattern pattern = PATTERNS.get(family);
         if (pattern == null) {
             return false;
         }

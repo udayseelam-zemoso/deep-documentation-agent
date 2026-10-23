@@ -9,8 +9,21 @@ import com.deepdoc.model.SourceReference;
 public class DependencyEdge {
     private int referenceCount;
     private SourceReference evidence;
+    private boolean coChange;
 
     public DependencyEdge() {
+    }
+
+    /**
+     * True when the edge was inferred from files being committed together ({@link CoChangeEdges})
+     * rather than from a reference in the code; such edges carry no evidence line.
+     */
+    public boolean isCoChange() {
+        return coChange;
+    }
+
+    void markCoChange() {
+        this.coChange = true;
     }
 
     public int getReferenceCount() {

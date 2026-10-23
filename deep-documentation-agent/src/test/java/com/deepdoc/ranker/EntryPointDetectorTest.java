@@ -22,6 +22,15 @@ class EntryPointDetectorTest {
     }
 
     @Test
+    void recognisesMainFunctionsInGenericFallbackLanguages() {
+        assertThat(EntryPointDetector.isEntryPoint("Dart", "void main() => runApp(App());")).isTrue();
+        assertThat(EntryPointDetector.isEntryPoint("Clojure", "(defn -main [& args])")).isTrue();
+        assertThat(EntryPointDetector.isEntryPoint("Haskell", "main :: IO ()\nmain = pure ()")).isTrue();
+        assertThat(EntryPointDetector.isEntryPoint("Elixir", "defmodule A do\n  use Application\nend")).isTrue();
+        assertThat(EntryPointDetector.isEntryPoint("Lua", "local function domain() end")).isFalse();
+    }
+
+    @Test
     void ignoresOrdinaryFilesAndCommentedOutMarkers() {
         assertThat(EntryPointDetector.isEntryPoint("Python", "# if __name__ == '__main__':\ndef f(): pass"))
                 .isFalse();

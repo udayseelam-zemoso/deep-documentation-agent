@@ -11,6 +11,43 @@ public class GraphSection {
     private int splitMinFiles = 20;
     /** JS/TS import prefix -> directory relative to the repository root, e.g. "@" -> "src". */
     private Map<String, String> jsAliases = new LinkedHashMap<>();
+    /** Link files of languages without a dedicated extractor when they are committed together. */
+    private boolean coChangeEdges = true;
+    private int coChangeMinCommits = 3;
+    private double coChangeMinCoupling = 0.5;
+    private int coChangeMaxFilesPerCommit = 30;
+
+    public boolean isCoChangeEdges() {
+        return coChangeEdges;
+    }
+
+    public void setCoChangeEdges(boolean coChangeEdges) {
+        this.coChangeEdges = coChangeEdges;
+    }
+
+    public int getCoChangeMinCommits() {
+        return coChangeMinCommits;
+    }
+
+    public void setCoChangeMinCommits(int coChangeMinCommits) {
+        this.coChangeMinCommits = coChangeMinCommits;
+    }
+
+    public double getCoChangeMinCoupling() {
+        return coChangeMinCoupling;
+    }
+
+    public void setCoChangeMinCoupling(double coChangeMinCoupling) {
+        this.coChangeMinCoupling = coChangeMinCoupling;
+    }
+
+    public int getCoChangeMaxFilesPerCommit() {
+        return coChangeMaxFilesPerCommit;
+    }
+
+    public void setCoChangeMaxFilesPerCommit(int coChangeMaxFilesPerCommit) {
+        this.coChangeMaxFilesPerCommit = coChangeMaxFilesPerCommit;
+    }
 
     public Map<String, String> getJsAliases() {
         return jsAliases;

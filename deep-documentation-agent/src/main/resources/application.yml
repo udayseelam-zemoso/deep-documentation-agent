@@ -77,6 +77,15 @@ graph:
   #     "@": src
   #     "@components": src/components
   jsAliases: {}
+  # Languages without a dedicated extractor (Clojure, Elixir, Dart, Lua, ...) are parsed by a
+  # generic fallback. Because its edges are the least certain, such files are also linked to
+  # files they are repeatedly committed with: at least coChangeMinCommits shared commits that
+  # make up at least coChangeMinCoupling of the less-changed file's commits. Commits touching
+  # more than coChangeMaxFilesPerCommit files (mass renames, reformatting) are ignored.
+  coChangeEdges: true
+  coChangeMinCommits: 3
+  coChangeMinCoupling: 0.5
+  coChangeMaxFilesPerCommit: 30
 
 # Importance ranking
 #   package score = structureWeight * percentile(package PageRank)

@@ -4,6 +4,7 @@ import com.deepdoc.config.GraphSection;
 import com.deepdoc.model.FileInfo;
 import com.deepdoc.model.RepositoryManifest;
 import com.deepdoc.model.SourceReference;
+import com.deepdoc.repository.CommitRecord;
 import com.deepdoc.utils.LanguageDetector;
 import com.deepdoc.utils.SourceFiles;
 import org.jgrapht.Graph;
@@ -13,12 +14,15 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -26,8 +30,10 @@ import java.util.TreeMap;
  *
  * <ol>
  *   <li>Select the files to rank: programming-language files (per {@code languages.yml}) that are
- *       not tests and that some extractor understands.</li>
- *   <li>Run one {@link DependencyExtractor} per {@link LanguageFamily} to get file-to-file edges.</li>
+ *       not tests.</li>
+ *   <li>Run one {@link DependencyExtractor} per {@link LanguageFamily} to get file-to-file edges.
+ *       Languages outside every family get a {@link GenericDependencyExtractor} each.</li>
+ *   <li>When Git history is supplied, add {@link CoChangeEdges} for the generic-fallback files.</li>
  *   <li>Group files into packages ({@link PackageGrouper}) and roll file edges up into
  *       package edges.</li>
  * </ol>
@@ -42,25 +48,30 @@ public class DependencyGraphBuilder {
         this.config = config;
     }
 
+    /** Builds the graph from code alone, without co-change edges. */
     public DependencyGraph build(RepositoryManifest manifest) {
+        return build(manifest, Collections.emptyList(), manifest.getRepositoryPath());
+    }
+
+    /**
+     * @param commits  recent history, used for co-change edges (may be empty)
+     * @param workTree Git work tree the commit paths are relative to
+     */
+    public DependencyGraph build(RepositoryManifest manifest, List<CommitRecord> commits, Path workTree) {
         Path root = manifest.getRepositoryPath();
         Map<FileInfo, String> sources = new LinkedHashMap<>();
         Map<LanguageFamily, List<FileInfo>> filesByFamily = new EnumMap<>(LanguageFamily.class);
+        // Languages with no family, e.g. "Elixir" -> its files, for the generic fallback.
+        Map<String, List<FileInfo>> genericByLanguage = new TreeMap<>();
         Map<String, Integer> languageCounts = new TreeMap<>();
         int excludedTests = 0;
         int nonCode = 0;
-        int unparsedCode = 0;
 
         List<FileInfo> files = new ArrayList<>(manifest.getFiles());
         files.sort(Comparator.comparing(f -> f.getFilePath().toString()));
         for (FileInfo file : files) {
             if (!languages.isProgrammingLanguage(file.getLanguage())) {
                 nonCode++;
-                continue;
-            }
-            LanguageFamily family = LanguageFamily.of(file.getLanguage());
-            if (family == null) {
-                unparsedCode++;
                 continue;
             }
             if (!config.isIncludeTests() && TestFileDetector.isTest(root.relativize(file.getFilePath()))) {
@@ -72,7 +83,12 @@ public class DependencyGraphBuilder {
                 continue;
             }
             sources.put(file, source);
-            filesByFamily.computeIfAbsent(family, k -> new ArrayList<>()).add(file);
+            LanguageFamily family = LanguageFamily.of(file.getLanguage());
+            if (family != null) {
+                filesByFamily.computeIfAbsent(family, k -> new ArrayList<>()).add(file);
+            } else {
+                genericByLanguage.computeIfAbsent(file.getLanguage(), k -> new ArrayList<>()).add(file);
+            }
             languageCounts.merge(file.getLanguage(), 1, Integer::sum);
         }
 
@@ -81,6 +97,12 @@ public class DependencyGraphBuilder {
         filesByFamily.forEach((family, members) -> {
             DependencyExtractor extractor = DependencyExtractors.create(family, sourceSet, members, config);
             members.forEach(f -> extractorOf.put(f, extractor));
+        });
+        Set<FileInfo> genericFiles = new HashSet<>();
+        genericByLanguage.forEach((language, members) -> {
+            DependencyExtractor extractor = new GenericDependencyExtractor(sourceSet, language, members);
+            members.forEach(f -> extractorOf.put(f, extractor));
+            genericFiles.addAll(members);
         });
 
         Graph<FileInfo, DependencyEdge> fileGraph = new DefaultDirectedGraph<>(DependencyEdge.class);
@@ -93,6 +115,19 @@ public class DependencyGraphBuilder {
                 }
                 edge.addReferences(dep.referenceCount);
                 edge.setEvidenceIfAbsent(SourceReference.line(dep.from.getFilePath(), dep.line));
+            }
+        }
+        int coChangeEdges = 0;
+        if (config.isCoChangeEdges()) {
+            for (RawDependency dep : CoChangeEdges.find(genericFiles, sources.keySet(), commits, workTree, config)) {
+                // History only fills gaps: an edge the code shows (either way) is better evidence.
+                if (fileGraph.containsEdge(dep.from, dep.to) || hasCodeEdge(fileGraph, dep.to, dep.from)) {
+                    continue;
+                }
+                DependencyEdge edge = fileGraph.addEdge(dep.from, dep.to);
+                edge.addReferences(dep.referenceCount);
+                edge.markCoChange();
+                coChangeEdges++;
             }
         }
 
@@ -125,12 +160,18 @@ public class DependencyGraphBuilder {
             packageEdge.add(edge);
         }
 
-        logger.info("Dependency graph: {} files, {} dependencies, {} packages (depth {})",
-                fileGraph.vertexSet().size(), fileGraph.edgeSet().size(),
+        logger.info("Dependency graph: {} files, {} dependencies ({} from co-changes), {} packages (depth {})",
+                fileGraph.vertexSet().size(), fileGraph.edgeSet().size(), coChangeEdges,
                 packageGraph.vertexSet().size(), grouping.getDepth());
 
         return new DependencyGraph(root, fileGraph, packageGraph, packageOf, grouping.getDepth(),
-                grouping.getStrippedPrefixes(), excludedTests, nonCode, unparsedCode, languageCounts);
+                grouping.getStrippedPrefixes(), excludedTests, nonCode, genericFiles.size(), coChangeEdges,
+                languageCounts);
+    }
+
+    private static boolean hasCodeEdge(Graph<FileInfo, DependencyEdge> graph, FileInfo from, FileInfo to) {
+        DependencyEdge edge = graph.getEdge(from, to);
+        return edge != null && !edge.isCoChange();
     }
 
     /** Declared namespace if the language has one (Java package, C# namespace), else the directory. */

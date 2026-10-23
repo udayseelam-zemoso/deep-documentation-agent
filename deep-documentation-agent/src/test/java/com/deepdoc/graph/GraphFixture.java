@@ -4,10 +4,13 @@ import com.deepdoc.analyzer.RepositoryAnalyzer;
 import com.deepdoc.config.AppConfig;
 import com.deepdoc.config.ConfigLoader;
 import com.deepdoc.model.FileInfo;
+import com.deepdoc.repository.CommitRecord;
 import org.jgrapht.Graph;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -24,8 +27,13 @@ final class GraphFixture {
     }
 
     static GraphFixture build(Path repo, AppConfig config) throws IOException {
+        return build(repo, config, Collections.emptyList());
+    }
+
+    /** Builds with the given history; commit paths are relative to {@code repo}. */
+    static GraphFixture build(Path repo, AppConfig config, List<CommitRecord> commits) throws IOException {
         return new GraphFixture(new DependencyGraphBuilder(config.getGraph())
-                .build(new RepositoryAnalyzer(config).analyze(repo)));
+                .build(new RepositoryAnalyzer(config).analyze(repo), commits, repo));
     }
 
     FileInfo file(String relativePath) {

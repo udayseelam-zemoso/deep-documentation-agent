@@ -23,7 +23,8 @@ public final class DependencyGraph {
     private final List<String> strippedPrefixes;
     private final int excludedTestFiles;
     private final int nonCodeFiles;
-    private final int unparsedCodeFiles;
+    private final int genericFallbackFiles;
+    private final int coChangeEdges;
     private final Map<String, Integer> languageCounts;
 
     DependencyGraph(Path repositoryRoot,
@@ -34,7 +35,8 @@ public final class DependencyGraph {
                     List<String> strippedPrefixes,
                     int excludedTestFiles,
                     int nonCodeFiles,
-                    int unparsedCodeFiles,
+                    int genericFallbackFiles,
+                    int coChangeEdges,
                     Map<String, Integer> languageCounts) {
         this.repositoryRoot = repositoryRoot;
         this.fileGraph = fileGraph;
@@ -44,7 +46,8 @@ public final class DependencyGraph {
         this.strippedPrefixes = strippedPrefixes;
         this.excludedTestFiles = excludedTestFiles;
         this.nonCodeFiles = nonCodeFiles;
-        this.unparsedCodeFiles = unparsedCodeFiles;
+        this.genericFallbackFiles = genericFallbackFiles;
+        this.coChangeEdges = coChangeEdges;
         this.languageCounts = languageCounts;
     }
 
@@ -97,9 +100,14 @@ public final class DependencyGraph {
         return nonCodeFiles;
     }
 
-    /** Programming-language files that no extractor understands and that were left out of the graph. */
-    public int getUnparsedCodeFiles() {
-        return unparsedCodeFiles;
+    /** Files whose language has no dedicated extractor and that were parsed by the generic fallback. */
+    public int getGenericFallbackFiles() {
+        return genericFallbackFiles;
+    }
+
+    /** File edges inferred from Git co-changes rather than seen in the code. */
+    public int getCoChangeEdges() {
+        return coChangeEdges;
     }
 
     /** Number of graph files per language, sorted by language name. */

@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -80,10 +81,14 @@ public class DeepDocCLI implements Callable<Integer> {
             
             printManifestSummary(manifest);
 
-            DependencyGraph graph = new DependencyGraphBuilder(config.getGraph()).build(manifest);
+            GitHistory history = loadHistory(config.getGit(), manifest);
+            DependencyGraph graph = new DependencyGraphBuilder(config.getGraph())
+                    .build(manifest, history.commits, history.workTree);
             printDependencyGraph(graph);
 
-            ActivityScores activity = loadActivity(config.getGit(), manifest, graph);
+            ActivityScores activity = history.commits.isEmpty() ? ActivityScores.none()
+                    : ActivityScores.fromCommits(graph, history.commits, history.workTree,
+                            config.getGit().getHalfLifeDays(), Instant.now().getEpochSecond());
             Set<FileInfo> entryPoints = EntryPointDetector.detect(graph);
             RankingResult ranking = new ImportanceRanker(config.getRanking()).rank(graph, activity, entryPoints);
             printRanking(graph, ranking, top);
@@ -167,13 +172,14 @@ public class DeepDocCLI implements Callable<Integer> {
         logger.info("");
         logger.info("Dependency Graph");
         logger.info("----------------");
-        logger.info("Files in graph: {} (tests excluded: {}, non-code files: {}, code without an extractor: {})",
+        logger.info("Files in graph: {} (tests excluded: {}, non-code files: {}, parsed by the generic fallback: {})",
                 graph.getFileGraph().vertexSet().size(), graph.getExcludedTestFiles(), graph.getNonCodeFiles(),
-                graph.getUnparsedCodeFiles());
+                graph.getGenericFallbackFiles());
         logger.info("Languages in graph: {}", graph.getLanguageCounts().entrySet().stream()
                 .map(e -> e.getKey() + " " + e.getValue())
                 .collect(Collectors.joining(", ")));
-        logger.info("File dependencies: {}", graph.getFileGraph().edgeSet().size());
+        logger.info("File dependencies: {} ({} inferred from co-changes)", graph.getFileGraph().edgeSet().size(),
+                graph.getCoChangeEdges());
         logger.info("Packages: {} at depth {}{}", packages.vertexSet().size(), graph.getGroupingDepth(),
                 graph.getStrippedPrefixes().isEmpty() ? ""
                         : " (common prefix " + String.join(", ", graph.getStrippedPrefixes()) + " stripped)");
@@ -190,18 +196,29 @@ public class DeepDocCLI implements Callable<Integer> {
         }
     }
 
-    private ActivityScores loadActivity(GitSection git, RepositoryManifest manifest, DependencyGraph graph) {
+    /** Commits read once and shared by the graph (co-change edges) and the ranking (activity). */
+    private static final class GitHistory {
+        final List<CommitRecord> commits;
+        final Path workTree;
+
+        GitHistory(List<CommitRecord> commits, Path workTree) {
+            this.commits = commits;
+            this.workTree = workTree;
+        }
+    }
+
+    private GitHistory loadHistory(GitSection git, RepositoryManifest manifest) {
+        GitHistory none = new GitHistory(Collections.emptyList(), manifest.getRepositoryPath());
         if (!git.isEnabled() || !manifest.getContext().hasGitHistory()) {
-            return ActivityScores.none();
+            return none;
         }
         try (GitInterface gitInterface = new GitInterface(manifest.getRepositoryPath())) {
-            List<CommitRecord> commits = gitInterface.getCommitHistory(
-                    git.getHistoryMonths(), git.getMaxCommits(), git.getBulkCommitFileLimit());
-            return ActivityScores.fromCommits(graph, commits, gitInterface.getWorkTree(),
-                    git.getHalfLifeDays(), Instant.now().getEpochSecond());
+            return new GitHistory(gitInterface.getCommitHistory(
+                    git.getHistoryMonths(), git.getMaxCommits(), git.getBulkCommitFileLimit()),
+                    gitInterface.getWorkTree());
         } catch (IOException e) {
             logger.warn("Git history unavailable, ranking on structure only: {}", e.getMessage());
-            return ActivityScores.none();
+            return none;
         }
     }
 
