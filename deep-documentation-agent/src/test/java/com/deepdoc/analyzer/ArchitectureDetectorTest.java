@@ -49,8 +49,10 @@ class ArchitectureDetectorTest {
         assertThat(context.getPatterns()).filteredOn(DetectedPattern::isFramework)
                 .extracting(DetectedPattern::getName)
                 .doesNotContain("Spring");
-        assertThat(context.getPatterns().get(0).getEvidence())
-                .anyMatch(e -> e.getStartLine() == 3);
+        assertThat(context.getPatterns())
+                .filteredOn(p -> p.getName().equals("Spring Boot"))
+                .singleElement()
+                .satisfies(p -> assertThat(p.getEvidence()).anyMatch(e -> e.getStartLine() == 3));
     }
 
     @Test
@@ -158,6 +160,21 @@ class ArchitectureDetectorTest {
                 "volumes:",
                 "  data:");
         assertThat(ModuleDetector.countComposeServices(compose)).isEqualTo(1);
+    }
+
+    @Test
+    void commentsAndTestsDoNotCountAsSpringBoot() throws IOException {
+        write(repo.resolve("src/main/java/com/acme/Docs.java"),
+                "/** Example: {@code @SpringBootApplication} */",
+                "class Docs {}");
+        write(repo.resolve("src/test/java/com/acme/AppTest.java"),
+                "@SpringBootApplication class AppTest {}");
+        write(repo.resolve("src/main/resources/application.yml"), "name: docs");
+
+        RepositoryContext context = analyze();
+
+        assertThat(context.getFrameworks()).doesNotContain("Spring Boot");
+        assertThat(context.getDetectedArchitecture()).isEqualTo("Unknown");
     }
 
     @Test

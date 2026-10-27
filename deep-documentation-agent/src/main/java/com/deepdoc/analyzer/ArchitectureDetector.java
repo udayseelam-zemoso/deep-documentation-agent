@@ -8,6 +8,9 @@ import com.deepdoc.model.FileInfo;
 import com.deepdoc.model.RepositoryContext;
 import com.deepdoc.model.RepositoryManifest;
 import com.deepdoc.model.SourceReference;
+import com.deepdoc.graph.LanguageFamily;
+import com.deepdoc.graph.SourceScanner;
+import com.deepdoc.graph.TestFileDetector;
 import com.deepdoc.utils.SourceFiles;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -213,8 +216,18 @@ public class ArchitectureDetector {
         Pattern pattern = signal.isRegex() ? Pattern.compile(signal.getText()) : null;
         for (FileInfo file : files) {
             if (!nameMatches(file, signal.getFiles())) continue;
+            // Test sources mention framework names as strings ("@SpringBootApplication" in a unit
+            // test) and would make this repository look like Spring Boot.
+            Path relative = root.relativize(file.getFilePath());
+            if (relative.getNameCount() > 0 && TestFileDetector.isTest(relative)) continue;
             String text = contents.computeIfAbsent(file.getFilePath(), SourceFiles::read);
             if (text == null) continue;
+            // Comments and strings are blanked so a Javadoc example of @SpringBootApplication
+            // does not make this tool look like a Spring Boot app.
+            LanguageFamily family = LanguageFamily.of(file.getLanguage());
+            if (family != null) {
+                text = SourceScanner.blankCommentsAndLiterals(text, family.syntax());
+            }
             int offset = indexOf(text, signal.getText(), pattern);
             if (offset >= 0) {
                 int line = lineOf(text, offset);

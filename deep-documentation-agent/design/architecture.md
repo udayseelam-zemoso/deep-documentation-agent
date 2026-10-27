@@ -35,6 +35,8 @@ Signal types:
 
 A pattern is reported only when confidence ≥ `analysis.architectureMinConfidence` (default 0.3).
 
+Source files are matched after comments and string literals are blanked, and test files are skipped. A Javadoc example of `@SpringBootApplication`, or that annotation only in a unit test, does not make the repository look like Spring Boot.
+
 **Specific beats generic.** `suppresses` drops a weaker sibling when both match: Spring Boot hides Spring, Next.js hides React, NestJS hides Express. Otherwise every Boot app would also be reported as Spring.
 
 Adding a framework is a YAML change. The detector code does not grow.
