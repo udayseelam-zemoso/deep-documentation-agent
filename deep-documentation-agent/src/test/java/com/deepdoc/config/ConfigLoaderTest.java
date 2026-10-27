@@ -16,6 +16,7 @@ class ConfigLoaderTest {
                 .contains("node_modules", "target", ".git");
         assertThat(config.getAnalysis().getIgnoreExtensions())
                 .contains(".class", ".jar", ".min.js");
+        assertThat(config.getAnalysis().getArchitectureMinConfidence()).isEqualTo(0.3);
         assertThat(config.getGit().isEnabled()).isTrue();
         assertThat(config.getGit().getHalfLifeDays()).isEqualTo(180);
         assertThat(config.getGraph().isIncludeTests()).isFalse();

@@ -1,5 +1,6 @@
 package com.deepdoc.cli;
 
+import com.deepdoc.analyzer.ArchitectureDetector;
 import com.deepdoc.analyzer.RepositoryAnalyzer;
 import com.deepdoc.config.AppConfig;
 import com.deepdoc.config.ConfigLoader;
@@ -8,8 +9,12 @@ import com.deepdoc.graph.DependencyGraph;
 import com.deepdoc.graph.DependencyGraphBuilder;
 import com.deepdoc.graph.PackageEdge;
 import com.deepdoc.graph.PackageNode;
+import com.deepdoc.model.DetectedModule;
+import com.deepdoc.model.DetectedPattern;
 import com.deepdoc.model.FileInfo;
+import com.deepdoc.model.RepositoryContext;
 import com.deepdoc.model.RepositoryManifest;
+import com.deepdoc.model.SourceReference;
 import com.deepdoc.ranker.ActivityScores;
 import com.deepdoc.ranker.DocLevel;
 import com.deepdoc.ranker.EntryPointDetector;
@@ -31,6 +36,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -137,15 +143,47 @@ public class DeepDocCLI implements Callable<Integer> {
                 );
         logger.info("");
         
-        logger.info("Architecture: {}", manifest.getContext().getDetectedArchitecture());
-        if (!manifest.getContext().getFrameworks().isEmpty()) {
-            logger.info("Frameworks: {}", String.join(", ", manifest.getContext().getFrameworks()));
+        RepositoryContext context = manifest.getContext();
+        logger.info("Architecture: {} ({}, {})", context.getDetectedArchitecture(),
+                ArchitectureDetector.percent(context.getArchitectureConfidence()),
+                context.getArchitectureStyle().displayName());
+        if (!context.getModules().isEmpty()) {
+            logger.info("Modules: {}", context.getModules().size());
+            for (DetectedModule module : context.getModules()) {
+                logger.info("  {} [{}{}]", module.getRelativePath() + "/", module.getBuildSystem(),
+                        module.isDeployable() ? ", deployable" : "");
+            }
         }
-        if (!manifest.getContext().getTechnologies().isEmpty()) {
+        if (!context.getFrameworks().isEmpty()) {
+            List<String> named = new ArrayList<>();
+            for (DetectedPattern pattern : context.getPatterns()) {
+                if (pattern.isFramework()) {
+                    named.add(pattern.getName() + " " + ArchitectureDetector.percent(pattern.getConfidence()));
+                }
+            }
+            logger.info("Frameworks: {}", named.isEmpty() ? String.join(", ", context.getFrameworks())
+                    : String.join(", ", named));
+        }
+        if (!context.getTechnologies().isEmpty()) {
             logger.info("Technologies:");
-            manifest.getContext().getTechnologies().forEach((key, value) -> 
-                logger.info("  {} - {}", key, value)
-            );
+            context.getTechnologies().forEach((key, value) ->
+                    logger.info("  {} - {}", key, value));
+        }
+        List<SourceReference> evidence = new ArrayList<>();
+        for (DetectedPattern pattern : context.getPatterns()) {
+            if (pattern.isFramework()) {
+                evidence.addAll(pattern.getEvidence());
+            }
+        }
+        if (!evidence.isEmpty()) {
+            logger.info("Evidence:");
+            int shown = 0;
+            for (SourceReference ref : evidence) {
+                if (shown++ == 5) break;
+                Path relative = manifest.getRepositoryPath().relativize(ref.getFile());
+                logger.info("  {}:{}{}", relative, ref.getStartLine(),
+                        ref.getSnippet() == null ? "" : "  " + ref.getSnippet());
+            }
         }
         logger.info("Git History: {}", manifest.getContext().hasGitHistory() ? "Available" : "Not available");
         logger.info("");

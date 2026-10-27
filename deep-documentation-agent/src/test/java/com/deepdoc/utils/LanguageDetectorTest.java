@@ -68,6 +68,8 @@ class LanguageDetectorTest {
         assertThat(detector.detectLanguage(Paths.get("deploy/Dockerfile.prod"))).isEqualTo("Dockerfile");
         assertThat(detector.detectLanguage(Paths.get("CMakeLists.txt"))).isEqualTo("CMake");
         assertThat(detector.detectLanguage(Paths.get("Jenkinsfile"))).isEqualTo("Groovy");
+        assertThat(detector.detectLanguage(Paths.get("go.mod"))).isEqualTo("Go");
+        assertThat(detector.detectLanguage(Paths.get("requirements.txt"))).isEqualTo("Python");
         assertThat(detector.detectLanguage(Paths.get("notes.txt"))).isNull();
     }
 

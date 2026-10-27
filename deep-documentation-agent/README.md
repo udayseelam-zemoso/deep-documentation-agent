@@ -139,6 +139,14 @@ mvn test
 
 The approach, formulas and a worked example are documented in [`design/README.md`](design/README.md).
 
+**Day 5: Architecture Detection** ✓
+- Patterns live in `src/main/resources/architectures.yml` (Spring Boot, Quarkus, React, Next.js, Django, Rails, …). Confidence is the fraction of each pattern's signal weight that matched.
+- More specific patterns hide weaker siblings (Spring Boot hides Spring; Next.js hides React).
+- Build modules are detected for Maven, Gradle, npm workspaces, Go, Cargo, Python and .NET. A module is deployable when it has a `main`, a Dockerfile or a start script.
+- Style is counted from those modules plus Docker Compose / Dockerfiles: monolith, modular monolith, microservices, or library.
+- The CLI prints the label with confidence and style, the module list, and a few evidence lines.
+- Approach: [`design/architecture.md`](design/architecture.md).
+
 **Language coverage** ✓
 - Languages are defined in `src/main/resources/languages.yml` (about 65 entries: extensions, special file names such as `Dockerfile`, and shebang interpreters). Add a language there; no code change is needed for it to be detected.
 - Dedicated dependency extractors (`com.deepdoc.graph.*DependencyExtractor`):
@@ -163,10 +171,10 @@ The approach, formulas and a worked example are documented in [`design/README.md
 
 ### Upcoming Work
 
-**Day 5: Architecture Detection Enhancement**
-- Advanced pattern matching
-- Multi-module support
-- Confidence scoring
+**Week 2: Code Understanding**
+- Java / JS AST parsing
+- LLM integration
+- Knowledge graph
 
 ## Architecture
 

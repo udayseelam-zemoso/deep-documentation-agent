@@ -60,12 +60,14 @@ languages:
   - name: PHP
     type: programming
     extensions: [.php, .phtml]
+    filenames: [artisan]
     interpreters: [php]
 
   # --- Scripting -------------------------------------------------------------
   - name: Python
     type: programming
     extensions: [.py, .pyw, .pyi]
+    filenames: [requirements.txt, Pipfile]
     interpreters: [python]
   - name: Ruby
     type: programming
@@ -120,6 +122,7 @@ languages:
   - name: Go
     type: programming
     extensions: [.go]
+    filenames: [go.mod, go.sum]
   - name: Zig
     type: programming
     extensions: [.zig]
@@ -130,7 +133,7 @@ languages:
   # --- .NET ------------------------------------------------------------------
   - name: C#
     type: programming
-    extensions: [.cs, .csx]
+    extensions: [.cs, .csx, .csproj]
   - name: F#
     type: programming
     extensions: [.fs, .fsx, .fsi]

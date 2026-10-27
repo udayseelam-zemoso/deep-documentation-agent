@@ -46,6 +46,9 @@ analysis:
     - .min.js
     - .min.css
     - .map
+  # A pattern in architectures.yml is reported only when this fraction of its signal
+  # weight matches (annotation + POM + config file is stronger than the annotation alone).
+  architectureMinConfidence: 0.3
 
 # Git history (activity signal for importance ranking)
 git:
