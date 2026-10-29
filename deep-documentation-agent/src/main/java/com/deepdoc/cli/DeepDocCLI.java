@@ -23,6 +23,11 @@ import com.deepdoc.ranker.ImportanceRanker;
 import com.deepdoc.ranker.PackageRank;
 import com.deepdoc.ranker.RankingResult;
 import com.deepdoc.repository.CommitRecord;
+import com.deepdoc.docgen.DocumentationResult;
+import com.deepdoc.docgen.DocumentationService;
+import com.deepdoc.understand.CodeUnderstandingService;
+import com.deepdoc.understand.FileOutline;
+import com.deepdoc.understand.UnderstandingResult;
 import com.deepdoc.repository.GitInterface;
 import org.jgrapht.Graph;
 import picocli.CommandLine;
@@ -59,13 +64,13 @@ public class DeepDocCLI implements Callable<Integer> {
             @Parameters(index = "0", description = "Path to the repository to analyze")
             String repositoryPath,
             
-            @Option(names = {"-o", "--output"}, description = "Output directory for documentation (default: <repo>/docs)")
+            @Option(names = {"-o", "--output"}, description = "Output directory for Markdown docs (default: <repo>/docs)")
             String outputPath,
             
             @Option(names = {"-v", "--verbose"}, description = "Enable verbose logging")
             boolean verbose,
             
-            @Option(names = {"--no-llm"}, description = "Skip LLM inference (structure-only documentation)")
+            @Option(names = {"--no-llm"}, description = "Skip LLM rewrites; use Javadoc and name heuristics")
             boolean noLlm,
 
             @Option(names = {"--top"}, defaultValue = "20", description = "Number of ranked files to print (default: ${DEFAULT-VALUE})")
@@ -98,13 +103,21 @@ public class DeepDocCLI implements Callable<Integer> {
             Set<FileInfo> entryPoints = EntryPointDetector.detect(graph);
             RankingResult ranking = new ImportanceRanker(config.getRanking()).rank(graph, activity, entryPoints);
             printRanking(graph, ranking, top);
+
+            UnderstandingResult understanding = new CodeUnderstandingService(config, !noLlm)
+                    .understand(graph, ranking, manifest.getContext().getDetectedArchitecture());
+            printUnderstanding(graph, understanding, top);
+
+            Path docsDir = DocumentationService.resolveOutputDirectory(repoPath, outputPath, config.getOutput());
+            DocumentationResult docs = new DocumentationService(config)
+                    .generate(docsDir, manifest, graph, ranking, understanding);
+            printDocumentation(docs);
             
             logger.info("");
             logger.info("✓ Repository analysis completed successfully");
             logger.info("");
             logger.info("Next steps:");
-            logger.info("  - Code understanding and LLM integration (Week 2)");
-            logger.info("  - Documentation generation (Week 3)");
+            logger.info("  - Verification and delivery (Week 4)");
             
             return 0;
         } catch (IOException e) {
@@ -287,6 +300,61 @@ public class DeepDocCLI implements Callable<Integer> {
             String flags = (f.isEntryPoint() ? "entry " : "") + (f.isBoundary() ? "boundary" : "");
             logger.info(String.format("  %-4d %-60s %8.3f %6.2f %-8s %s", i + 1, graph.relativePath(f.getFile()),
                     f.getPriority(), f.getLocalScore(), f.getLevel(), flags.trim()));
+        }
+    }
+
+    /** Outlines of DEEP/SUMMARY files: responsibility, types, and which other outlined files they use. */
+    private void printUnderstanding(DependencyGraph graph, UnderstandingResult understanding, int top) {
+        logger.info("");
+        logger.info("Code Understanding");
+        logger.info("------------------");
+        logger.info("Outlined {} files ({} JavaParser, {} lexical, {} failed); LLM: {}",
+                understanding.getOutlines().size(), understanding.getAstFiles(),
+                understanding.getLexicalFiles(), understanding.getFailedFiles(), understanding.getLlmMode());
+        logger.info("Symbols: {} types, {} methods/functions, {} cross-file uses",
+                understanding.getKnowledge().typeCount(), understanding.getKnowledge().methodCount(),
+                understanding.getKnowledge().useEdgeCount());
+        logger.info("");
+        List<FileOutline> outlines = understanding.getOutlines();
+        int shown = Math.min(top, outlines.size());
+        for (int i = 0; i < shown; i++) {
+            FileOutline outline = outlines.get(i);
+            logger.info("  {} [{}] {}", graph.relativePath(outline.getFile()), outline.getLevel(),
+                    outline.getResponsibility());
+            if (!outline.typeNames().isEmpty()) {
+                logger.info("      types: {}", String.join(", ", outline.typeNames()));
+            }
+            List<String> methods = outline.methodNames();
+            if (!methods.isEmpty()) {
+                logger.info("      methods: {}", String.join(", ",
+                        methods.size() > 8 ? methods.subList(0, 8) : methods));
+            }
+            List<String> used = new ArrayList<>();
+            for (FileInfo target : understanding.getKnowledge().uses(outline.getFile())) {
+                used.add(graph.relativePath(target));
+            }
+            if (!used.isEmpty()) {
+                logger.info("      uses: {}", String.join(", ", used));
+            }
+        }
+    }
+
+    /** Where the Markdown landed and how many DEEP / SUMMARY / LISTED sections were written. */
+    private void printDocumentation(DocumentationResult docs) {
+        logger.info("");
+        logger.info("Documentation");
+        logger.info("-------------");
+        logger.info("Wrote {} files to {}", docs.getWrittenFiles().size(), docs.getOutputDirectory());
+        logger.info("Package pages: {}; sections: {} deep, {} summary, {} listed{}",
+                docs.getPackagePages(), docs.getDeepSections(), docs.getSummarySections(),
+                docs.getListedEntries(), docs.hasDiagrams() ? "; Mermaid diagrams included" : "");
+        int shown = Math.min(8, docs.getWrittenFiles().size());
+        for (int i = 0; i < shown; i++) {
+            Path file = docs.getWrittenFiles().get(i);
+            logger.info("  {}", docs.getOutputDirectory().relativize(file));
+        }
+        if (docs.getWrittenFiles().size() > shown) {
+            logger.info("  … {} more", docs.getWrittenFiles().size() - shown);
         }
     }
 

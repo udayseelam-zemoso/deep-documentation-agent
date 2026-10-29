@@ -29,6 +29,8 @@ analysis:
     - vendor
     - __pycache__
     - .gradle
+    - docs
+    - output
   ignoreExtensions:
     - .class
     - .jar
@@ -113,16 +115,26 @@ ranking:
   # Share of ranked files that get a deep (per-file) write-up
   deepFraction: 0.2
 
-# Where generated docs will go (Week 3)
+# Where `analyze` writes Markdown. `--output` overrides defaultDirectory (resolved from cwd
+# when relative). generateDiagrams turns Mermaid package graphs on or off.
 output:
   defaultDirectory: docs
   format: markdown
   generateDiagrams: true
 
-# LLM settings (Week 2). Not called yet.
+# Which ranked files are parsed into outlines (Week 2). LISTED files are skipped by default.
+understand:
+  includeListed: false
+  maxFiles: 40
+
+# LLM: one-sentence responsibilities for DEEP files. The key is read from the environment
+# (apiKeyEnv), never from this file. Without a key, or with --no-llm, the heuristic is used.
 llm:
   enabled: true
   provider: openai
-  model: gpt-4
-  maxTokens: 2000
-  temperature: 0.3
+  model: gpt-4o-mini
+  maxTokens: 200
+  temperature: 0.2
+  apiKeyEnv: OPENAI_API_KEY
+  baseUrl: https://api.openai.com/v1
+  timeoutSeconds: 20

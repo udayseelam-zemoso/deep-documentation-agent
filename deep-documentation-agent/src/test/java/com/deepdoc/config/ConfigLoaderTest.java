@@ -13,7 +13,8 @@ class ConfigLoaderTest {
         assertThat(config.getApp().getName()).isEqualTo("Deep Documentation Agent");
         assertThat(config.getApp().getVersion()).isEqualTo("1.0.0");
         assertThat(config.getAnalysis().getIgnoreDirectories())
-                .contains("node_modules", "target", ".git");
+                .contains("node_modules", "target", ".git", "docs", "output");
+        assertThat(config.getOutput().isGenerateDiagrams()).isTrue();
         assertThat(config.getAnalysis().getIgnoreExtensions())
                 .contains(".class", ".jar", ".min.js");
         assertThat(config.getAnalysis().getArchitectureMinConfidence()).isEqualTo(0.3);
@@ -24,5 +25,6 @@ class ConfigLoaderTest {
         assertThat(config.getRanking().getDeepFraction()).isEqualTo(0.2);
         assertThat(config.getOutput().getDefaultDirectory()).isEqualTo("docs");
         assertThat(config.getLlm().getProvider()).isEqualTo("openai");
+        assertThat(config.getUnderstand().getMaxFiles()).isEqualTo(40);
     }
 }

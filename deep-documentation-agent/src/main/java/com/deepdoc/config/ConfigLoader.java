@@ -57,6 +57,9 @@ public final class ConfigLoader {
         if (config.getLlm() == null) {
             config.setLlm(new LlmSection());
         }
+        if (config.getUnderstand() == null) {
+            config.setUnderstand(new UnderstandSection());
+        }
         return config;
     }
 }
