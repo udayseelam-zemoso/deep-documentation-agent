@@ -119,7 +119,12 @@ output:
   format: markdown
   generateDiagrams: true
 
-# LLM settings (Week 2). Not called yet.
+# Which ranked Java files Day 6-7 parses into outlines. LISTED files are skipped by default.
+understand:
+  includeListed: false
+  maxFiles: 40
+
+# LLM settings (Day 8-10). Not called yet.
 llm:
   enabled: true
   provider: openai

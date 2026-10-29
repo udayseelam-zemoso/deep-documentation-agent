@@ -15,18 +15,18 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /** Builds a graph for a temp repository and looks up files and edges by repository-relative path. */
-final class GraphFixture {
-    final DependencyGraph graph;
+public final class GraphFixture {
+    public final DependencyGraph graph;
 
     private GraphFixture(DependencyGraph graph) {
         this.graph = graph;
     }
 
-    static GraphFixture build(Path repo) throws IOException {
+    public static GraphFixture build(Path repo) throws IOException {
         return build(repo, ConfigLoader.load());
     }
 
-    static GraphFixture build(Path repo, AppConfig config) throws IOException {
+    public static GraphFixture build(Path repo, AppConfig config) throws IOException {
         return build(repo, config, Collections.emptyList());
     }
 
@@ -36,7 +36,7 @@ final class GraphFixture {
                 .build(new RepositoryAnalyzer(config).analyze(repo), commits, repo));
     }
 
-    FileInfo file(String relativePath) {
+    public FileInfo file(String relativePath) {
         return graph.getFileGraph().vertexSet().stream()
                 .filter(f -> graph.relativePath(f).equals(relativePath))
                 .findFirst()
