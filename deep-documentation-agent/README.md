@@ -171,9 +171,10 @@ The approach, formulas and a worked example are documented in [`design/README.md
 
 **Week 2, Day 6-7: Java AST, facts, knowledge graph** ✓
 - Ranked Java files are parsed with JavaParser (types, methods, Javadoc, annotations, extends/implements, mentioned names).
-- Those fields are flattened into named facts (`DECLARES_TYPE`, `REFERENCES`, …).
+- Week 1 **DEEP / SUMMARY / LISTED** stamps decide what happens: DEEP and SUMMARY are outlined; LISTED is skipped by default. DEEP facts include methods; SUMMARY facts are a paragraph (type, Javadoc, annotations, parents, imports, references).
+- Those fields are flattened into named facts (`DECLARES_TYPE`, `DECLARES_METHOD`, `REFERENCES`, …).
 - A knowledge graph links outlined files that mention each other's unique type names (including same-package types that never appear in an import).
-- `analyze` prints the outlines after ranking. Approach: [`design/understanding.md`](design/understanding.md).
+- `analyze` prints a DEEP group then a SUMMARY group after ranking. Approach: [`design/understanding.md`](design/understanding.md).
 
 ### Upcoming Work
 

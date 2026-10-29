@@ -31,6 +31,8 @@ import java.util.Set;
  * <p>We do <em>not</em> run the symbol solver. That needs the project's classpath, which an
  * autonomous scan of an arbitrary repo does not have. The AST still gives us type names,
  * methods, annotations, extends/implements, Javadoc, and the simple names mentioned in a body.
+ * The ranker's documentation level is stamped onto the outline so
+ * {@link FactExtractor} can keep method facts on DEEP files only.
  * Cross-file links are made later by {@link KnowledgeGraph} matching those names to
  * {@code DECLARES_TYPE} facts.
  *

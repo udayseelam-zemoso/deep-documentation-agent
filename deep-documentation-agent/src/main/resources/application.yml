@@ -119,7 +119,10 @@ output:
   format: markdown
   generateDiagrams: true
 
-# Which ranked Java files Day 6-7 parses into outlines. LISTED files are skipped by default.
+# Day 6-7 follows Week 1 documentation levels:
+#   DEEP    — parse; extract full facts including methods
+#   SUMMARY — parse; extract paragraph facts (type, Javadoc, annotations, parents, imports, references)
+#   LISTED  — skip unless includeListed is true
 understand:
   includeListed: false
   maxFiles: 40

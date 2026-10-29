@@ -6,25 +6,43 @@ Week 1 told us *which files matter* and *how they import each other*. That is no
 
 This slice is **Java only**. Lexical outlines for other languages, one-sentence responsibilities, and the optional LLM rewrite are Day 8-10.
 
+## Documentation levels
+
+Week 1 already stamped each ranked file **DEEP**, **SUMMARY**, or **LISTED**. This slice does not re-rank. It *uses* those stamps for what to parse and how many facts to keep:
+
+| Level | Parsed? | Facts | Later docs (Week 3) |
+|---|---|---|---|
+| **DEEP** | yes | full set, including `DECLARES_METHOD` | own section: purpose, key flows |
+| **SUMMARY** | yes | type, Javadoc, annotations, parents, imports, references — no methods | a paragraph in the package section |
+| **LISTED** | no (unless `understand.includeListed`) | — | name in the package file list |
+
+REFERENCES still run on SUMMARY files so the knowledge graph can say who uses whom. Method lists stay off so a SUMMARY file does not look like a DEEP one.
+
+On the four-file shop (`ExampleRepos.writeFourFile`) with default `deepFraction=0.2` and no Git activity, that is: **OrderService** DEEP, **Order** and **OrderController** SUMMARY, **OrderValidator** LISTED (skipped).
+
 ## What we built
 
 Three steps, in order:
 
 ```
-ranked Java files (DEEP + SUMMARY)
+ranked Java files
         │
         ▼
-JavaAstUnderstander     JavaParser AST → FileOutline
+keep DEEP + SUMMARY (skip LISTED)
         │
         ▼
-FactExtractor           FileOutline → ExtractedFact list
+JavaAstUnderstander     JavaParser AST → FileOutline (level stamped)
+        │
+        ▼
+FactExtractor           DEEP → full facts; SUMMARY → paragraph facts
         │
         ▼
 KnowledgeGraph          unique DECLARES_TYPE name → file
                         mention facts → uses(file)
         │
         ▼
-UnderstandingResult     printed by `analyze`
+UnderstandingResult     deepOutlines() / summaryOutlines()
+                        printed by `analyze` as two groups
 ```
 
 ### 1. Java AST parsing (`JavaAstUnderstander`)
@@ -49,7 +67,7 @@ Garbage input such as `!!!` is marked `parsed = false`. JavaParser's recovery ca
 
 ### 2. Fact extraction (`FactExtractor`)
 
-The outline is still nested (a type with lists hanging off it). Documentation and the knowledge graph need a **flat, named** list of claims. `FactExtractor` walks the outline and emits:
+The outline is still nested (a type with lists hanging off it). Documentation and the knowledge graph need a **flat, named** list of claims. `FactExtractor` walks the outline and emits the kinds below. **DEEP** files get every kind. **SUMMARY** files get the same list except `DECLARES_METHOD`.
 
 | Kind | Example |
 |---|---|
@@ -78,9 +96,9 @@ So after this step we can say: “`OrderService.java` uses `Order.java` and `Ord
 
 After the ranking table:
 
-- how many Java files were outlined, failed, or skipped (non-Java)
+- DEEP count (method facts), SUMMARY count (paragraph facts), LISTED skipped
 - fact count, unique-type count, use-edge count
-- for the top files: types, methods, a few facts, and `uses:` paths
+- a **DEEP** group (types, methods, facts, `uses:`), then a **SUMMARY** group (types, facts, `uses:` — no method list)
 
 ```
 understand:
@@ -103,6 +121,6 @@ Parsing first gives us structured symbols. Facts name those symbols so two later
 
 - `understand.includeListed` / `understand.maxFiles` in `application.yml`
 - `JavaAstUnderstanderTest` — types, methods, Javadoc tags, parents, failed parse
-- `FactExtractorTest` — each fact kind on a `@RestController`
+- `FactExtractorTest` — DEEP emits `DECLARES_METHOD`; the same file at SUMMARY does not
 - `KnowledgeGraphTest` — four-file shop uses-edges; ambiguous `Helper` creates no edge
-- `JavaUnderstandingServiceTest` — four Java files outlined; a lone `.ts` file is skipped
+- `JavaUnderstandingServiceTest` — default config: OrderService DEEP, Order + OrderController SUMMARY, OrderValidator skipped; `includeListed` outlines the LISTED file without method facts; a lone `.ts` file is skipped

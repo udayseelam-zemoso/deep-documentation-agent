@@ -1,8 +1,11 @@
 package com.deepdoc.config;
 
 /**
- * Which ranked files Day 6-7 parses into outlines. LISTED files are skipped by default;
- * there are many of them and they only need a name in a later package listing.
+ * Which ranked files Day 6-7 parses, and therefore which documentation levels get facts.
+ *
+ * <p>DEEP and SUMMARY are always parsed. LISTED files are skipped by default; there are many
+ * of them and they only need a name in a later package listing. Fact depth still follows
+ * the level: methods on DEEP, a paragraph's facts on SUMMARY.
  */
 public class UnderstandSection {
     private boolean includeListed = false;

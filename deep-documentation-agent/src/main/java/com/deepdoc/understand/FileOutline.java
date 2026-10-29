@@ -11,7 +11,9 @@ import java.util.Set;
 
 /**
  * Structured view of one Java file after the AST walk: namespace, imports, and the types
- * it declares. Facts and the knowledge-graph edges are derived from this, not stored here.
+ * it declares. {@link #getLevel()} is the Week 1 documentation level (DEEP / SUMMARY / LISTED)
+ * and decides how many facts {@link FactExtractor} keeps. Knowledge-graph edges are
+ * derived from those facts, not stored here.
  */
 public final class FileOutline {
     public static final String ENGINE_JAVAPARSER = "javaparser";

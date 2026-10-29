@@ -17,21 +17,8 @@ class FactExtractorTest {
     Path dir;
 
     @Test
-    void emitsDeclareExtendAnnotateAndReferenceFacts() {
-        String source = String.join("\n",
-                "package com.acme.web;",
-                "import com.acme.shop.order.OrderService;",
-                "/** Handles HTTP requests for orders. */",
-                "@RestController",
-                "public class OrdersController extends BaseController {",
-                "    private OrderService service;",
-                "    public String list() { return service.toString(); }",
-                "}");
-        FileOutline outline = new JavaAstUnderstander().outline(
-                new FileInfo(dir.resolve("OrdersController.java"), "Java", 8, LocalDateTime.now()),
-                DocLevel.DEEP, source);
-
-        List<ExtractedFact> facts = FactExtractor.extract(outline);
+    void deepEmitsDeclareExtendAnnotateMethodAndReferenceFacts() {
+        List<ExtractedFact> facts = FactExtractor.extract(outline(DocLevel.DEEP, controllerSource()));
 
         assertThat(facts).anyMatch(f -> f.getKind() == FactKind.DECLARES_TYPE
                 && f.getSubject().equals("OrdersController"));
@@ -50,10 +37,43 @@ class FactExtractorTest {
     }
 
     @Test
+    void summaryKeepsTypeFactsButOmitsMethods() {
+        List<ExtractedFact> facts = FactExtractor.extract(outline(DocLevel.SUMMARY, controllerSource()));
+
+        assertThat(facts).anyMatch(f -> f.getKind() == FactKind.DECLARES_TYPE
+                && f.getSubject().equals("OrdersController"));
+        assertThat(facts).anyMatch(f -> f.getKind() == FactKind.ANNOTATED
+                && f.getObject().equals("RestController"));
+        assertThat(facts).anyMatch(f -> f.getKind() == FactKind.HAS_JAVADOC
+                && f.getObject().startsWith("Handles HTTP"));
+        assertThat(facts).anyMatch(f -> f.getKind() == FactKind.REFERENCES
+                && f.getObject().equals("OrderService"));
+        assertThat(facts).noneMatch(f -> f.getKind() == FactKind.DECLARES_METHOD);
+    }
+
+    @Test
     void failedOutlineYieldsNoFacts() {
         FileOutline outline = new JavaAstUnderstander().outline(
                 new FileInfo(dir.resolve("Broken.java"), "Java", 1, LocalDateTime.now()),
                 DocLevel.DEEP, "!!!");
         assertThat(FactExtractor.extract(outline)).isEmpty();
+    }
+
+    private FileOutline outline(DocLevel level, String source) {
+        return new JavaAstUnderstander().outline(
+                new FileInfo(dir.resolve("OrdersController.java"), "Java", 8, LocalDateTime.now()),
+                level, source);
+    }
+
+    private static String controllerSource() {
+        return String.join("\n",
+                "package com.acme.web;",
+                "import com.acme.shop.order.OrderService;",
+                "/** Handles HTTP requests for orders. */",
+                "@RestController",
+                "public class OrdersController extends BaseController {",
+                "    private OrderService service;",
+                "    public String list() { return service.toString(); }",
+                "}");
     }
 }

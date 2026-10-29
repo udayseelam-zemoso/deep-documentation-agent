@@ -7,7 +7,8 @@ package com.deepdoc.understand;
  * {@link #DECLARES_TYPE} (who owns a name) and the mention kinds
  * ({@link #REFERENCES}, {@link #EXTENDS}, {@link #IMPLEMENTS}, {@link #IMPORTS}).
  * The rest (methods, annotations, Javadoc) sit on the file so later days can
- * write a paragraph without parsing again.
+ * write a paragraph without parsing again. {@link #DECLARES_METHOD} is emitted
+ * only for {@code DEEP} files; SUMMARY keeps the other kinds.
  */
 public enum FactKind {
     DECLARES_TYPE,

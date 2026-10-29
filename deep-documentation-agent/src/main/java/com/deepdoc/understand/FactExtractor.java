@@ -1,12 +1,22 @@
 package com.deepdoc.understand;
 
+import com.deepdoc.ranker.DocLevel;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Flattens a {@link FileOutline} into {@link ExtractedFact}s. The AST walk already gathered
- * the raw fields; this step names each one so the knowledge graph and (later) the docs
- * writer share one vocabulary: declares, extends, annotated, references, …
+ * Flattens a {@link FileOutline} into {@link ExtractedFact}s. How many facts we keep depends
+ * on the file's documentation level from Week 1:
+ *
+ * <ul>
+ *   <li><b>DEEP</b> — full set, including every method. That is the raw material for a
+ *       per-file section (purpose, key flows).</li>
+ *   <li><b>SUMMARY</b> — type, Javadoc, annotations, parents, imports and references.
+ *       Enough for a paragraph. Method lists stay off so a SUMMARY file does not look
+ *       like a DEEP one. References still feed the knowledge graph.</li>
+ *   <li><b>LISTED</b> — not extracted (those files are not outlined).</li>
+ * </ul>
  */
 public final class FactExtractor {
     private FactExtractor() {
@@ -17,6 +27,7 @@ public final class FactExtractor {
         if (outline == null || !outline.isParsed()) {
             return facts;
         }
+        boolean deep = outline.getLevel() == DocLevel.DEEP;
         for (String imported : outline.getImports()) {
             facts.add(new ExtractedFact(outline.getFile(), FactKind.IMPORTS, outline.getNamespace(),
                     imported, 0));
@@ -40,9 +51,11 @@ public final class FactExtractor {
                 facts.add(new ExtractedFact(outline.getFile(), FactKind.HAS_JAVADOC, type.getName(),
                         type.getJavadoc(), type.getLine()));
             }
-            for (String method : type.getMethods()) {
-                facts.add(new ExtractedFact(outline.getFile(), FactKind.DECLARES_METHOD, type.getName(),
-                        method, type.getLine()));
+            if (deep) {
+                for (String method : type.getMethods()) {
+                    facts.add(new ExtractedFact(outline.getFile(), FactKind.DECLARES_METHOD, type.getName(),
+                            method, type.getLine()));
+                }
             }
             for (String ref : type.getReferences()) {
                 facts.add(new ExtractedFact(outline.getFile(), FactKind.REFERENCES, type.getName(),

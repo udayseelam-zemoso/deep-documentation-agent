@@ -14,12 +14,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Day 6-7 pipeline: parse ranked <em>Java</em> files with JavaParser, extract facts, hang
- * unique type names off a knowledge graph.
+ * Day 6-7 pipeline: parse ranked <em>Java</em> files with JavaParser, extract facts at the
+ * file's documentation level, hang unique type names off a knowledge graph.
  *
- * <p>Only DEEP and SUMMARY files are parsed by default. LISTED files will appear as names
- * in a package listing later; they are not worth an AST walk on a large repo. Non-Java
- * files are counted and skipped — lexical outlines are Day 8-10.
+ * <p>Week 1 already stamped each file DEEP, SUMMARY or LISTED. This step follows that:
+ * DEEP and SUMMARY are parsed (full method facts on DEEP, a paragraph's facts on SUMMARY).
+ * LISTED files stay as names for a later package listing. Non-Java files are counted and
+ * skipped — lexical outlines are Day 8-10.
  */
 public class JavaUnderstandingService {
     private static final Logger logger = LoggerFactory.getLogger(JavaUnderstandingService.class);
@@ -39,11 +40,19 @@ public class JavaUnderstandingService {
     public UnderstandingResult understand(RankingResult ranking) {
         List<FileOutline> outlines = new ArrayList<>();
         int ast = 0;
-        int skipped = 0;
+        int skippedNonJava = 0;
+        int skippedListed = 0;
         int failed = 0;
-        for (FileRank rank : select(ranking)) {
+        for (FileRank rank : ranking.getFiles()) {
+            if (rank.getLevel() == DocLevel.LISTED && !config.isIncludeListed()) {
+                skippedListed++;
+                continue;
+            }
+            if (outlines.size() + skippedNonJava >= config.getMaxFiles()) {
+                break;
+            }
             if (!"Java".equals(rank.getFile().getLanguage())) {
-                skipped++;
+                skippedNonJava++;
                 continue;
             }
             FileOutline outline = parse(rank);
@@ -55,23 +64,19 @@ public class JavaUnderstandingService {
             outlines.add(outline);
         }
         KnowledgeGraph knowledge = KnowledgeGraph.from(outlines);
-        logger.info("Understood {} Java files ({} failed, {} non-Java skipped); {} facts, {} use edges",
-                outlines.size(), failed, skipped, knowledge.getFacts().size(), knowledge.useEdgeCount());
-        return new UnderstandingResult(knowledge, ast, skipped, failed);
-    }
-
-    private List<FileRank> select(RankingResult ranking) {
-        List<FileRank> selected = new ArrayList<>();
-        for (FileRank rank : ranking.getFiles()) {
-            if (rank.getLevel() == DocLevel.LISTED && !config.isIncludeListed()) {
-                continue;
-            }
-            selected.add(rank);
-            if (selected.size() >= config.getMaxFiles()) {
-                break;
+        int deep = 0;
+        int summary = 0;
+        for (FileOutline outline : outlines) {
+            if (outline.getLevel() == DocLevel.DEEP) {
+                deep++;
+            } else if (outline.getLevel() == DocLevel.SUMMARY) {
+                summary++;
             }
         }
-        return selected;
+        logger.info("Understood {} Java files ({} DEEP, {} SUMMARY, {} LISTED skipped, {} non-Java skipped, {} failed); {} facts, {} use edges",
+                outlines.size(), deep, summary, skippedListed, skippedNonJava, failed,
+                knowledge.getFacts().size(), knowledge.useEdgeCount());
+        return new UnderstandingResult(knowledge, ast, skippedNonJava, skippedListed, failed);
     }
 
     private FileOutline parse(FileRank rank) {

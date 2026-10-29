@@ -172,7 +172,7 @@ The two are multiplied rather than added, so a file needs **both** an important 
 | **SUMMARY** | the best file of every package without a DEEP file, plus every entry point | a paragraph in its package's section |
 | **LISTED** | everything else | name and one-line role in the package's file list |
 
-This guarantees that every package is represented, and that every way into the system is explained.
+This guarantees that every package is represented, and that every way into the system is explained. Day 6-7 already consumes the stamps: DEEP files get method facts, SUMMARY files get a paragraph's facts, LISTED files are not parsed (see [`understanding.md`](understanding.md)).
 
 ### 5.6 Package roles
 
