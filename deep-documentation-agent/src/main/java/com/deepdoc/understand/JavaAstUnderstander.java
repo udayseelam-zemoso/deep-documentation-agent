@@ -127,7 +127,11 @@ public final class JavaAstUnderstander implements FileUnderstander {
     /** First sentence, stripped of Javadoc markup and collapsed whitespace. */
     static String firstSentence(String text) {
         if (text == null) return "";
-        String cleaned = text.replaceAll("\\s+", " ").trim();
+        String cleaned = text
+                .replaceAll("\\{@link\\s+([^}]+)}", "$1")
+                .replaceAll("\\{@code\\s+([^}]+)}", "$1")
+                .replaceAll("\\s+", " ")
+                .trim();
         if (cleaned.isEmpty()) return "";
         int end = cleaned.indexOf('.');
         return end < 0 ? cleaned : cleaned.substring(0, end + 1).trim();
