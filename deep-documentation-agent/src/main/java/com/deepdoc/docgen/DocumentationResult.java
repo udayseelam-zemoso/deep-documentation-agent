@@ -1,4 +1,4 @@
-package com.deepdoc.docs;
+package com.deepdoc.docgen;
 
 import java.nio.file.Path;
 import java.util.ArrayList;

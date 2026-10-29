@@ -1,4 +1,4 @@
-package com.deepdoc.docs;
+package com.deepdoc.docgen;
 
 import com.deepdoc.model.FileInfo;
 

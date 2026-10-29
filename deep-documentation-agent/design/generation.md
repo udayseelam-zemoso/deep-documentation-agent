@@ -1,6 +1,6 @@
 # Documentation Generation: Our Approach
 
-Week 3. Code lives in `com.deepdoc.docs`.
+Week 3. Code lives in `com.deepdoc.docgen` (not `docs`: that name is the output folder, and `analysis.ignoreDirectories` skips any directory called `docs` so a second run does not re-ingest the Markdown we just wrote).
 
 Week 1 decided *which files matter*. Week 2 said *what is inside them*. This step writes that down as Markdown a stranger can read, with a picture of the packages and a link back to every source line we used as evidence.
 

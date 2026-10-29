@@ -1,4 +1,4 @@
-package com.deepdoc.docs;
+package com.deepdoc.docgen;
 
 import com.deepdoc.config.ConfigLoader;
 import com.deepdoc.graph.GraphFixture;

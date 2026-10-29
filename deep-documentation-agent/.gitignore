@@ -44,7 +44,7 @@ Thumbs.db
 *~
 
 # Generated documentation written by `analyze` at the project root.
-# A leading slash keeps src/main/java/com/deepdoc/docs/ (the generator) tracked.
+# A leading slash keeps src/main/java/com/deepdoc/docgen/ (the generator) tracked.
 /docs/
 /output/
 

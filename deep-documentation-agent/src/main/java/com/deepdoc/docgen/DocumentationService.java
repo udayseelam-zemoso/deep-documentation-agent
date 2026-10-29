@@ -1,4 +1,4 @@
-package com.deepdoc.docs;
+package com.deepdoc.docgen;
 
 import com.deepdoc.config.AppConfig;
 import com.deepdoc.config.OutputSection;
