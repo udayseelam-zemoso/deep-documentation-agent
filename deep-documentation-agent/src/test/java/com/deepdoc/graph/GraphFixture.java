@@ -26,7 +26,7 @@ public final class GraphFixture {
         return build(repo, ConfigLoader.load());
     }
 
-    static GraphFixture build(Path repo, AppConfig config) throws IOException {
+    public static GraphFixture build(Path repo, AppConfig config) throws IOException {
         return build(repo, config, Collections.emptyList());
     }
 

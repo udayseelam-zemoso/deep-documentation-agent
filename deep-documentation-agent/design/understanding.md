@@ -47,9 +47,11 @@ Each outlined file contributes the types it declares. If a name is declared in e
 
 The key never goes in `application.yml` or on the command line. The client never logs the request body.
 
-## What Week 3 will take from this
+## What Week 3 takes from this
 
 - `FileOutline.getResponsibility()` — opening sentence of a file's section
 - `typeNames()` / `methodNames()` — the "what" list
 - `KnowledgeGraph.uses(file)` — "this file depends on …" with symbols, not only imports
 - `getEngine()` — so the docs can say when a claim came from a real AST vs a lexical scan
+
+See [`generation.md`](generation.md).

@@ -43,9 +43,10 @@ Thumbs.db
 *.bak
 *~
 
-# Generated documentation
-docs/
-output/
+# Generated documentation written by `analyze` at the project root.
+# A leading slash keeps src/main/java/com/deepdoc/docs/ (the generator) tracked.
+/docs/
+/output/
 
 # Temporary files
 tmp/

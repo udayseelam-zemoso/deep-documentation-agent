@@ -87,12 +87,13 @@ java -jar target/deep-documentation-agent-1.0.0.jar analyze /path/to/repo --verb
 
 | Option | Meaning today |
 |---|---|
-| `analyze <path>` | Scan the repo and print a summary |
+| `analyze <path>` | Scan the repo, rank files, outline them, and write Markdown docs |
 | `-v`, `--verbose` | Print a stack trace if something fails |
-| `-o`, `--output` | Reserved for later (docs output folder) |
-| `--no-llm` | Reserved for later (skip LLM) |
+| `-o`, `--output` | Folder for the generated docs (default: `<repo>/docs`) |
+| `--no-llm` | Skip LLM rewrites; use Javadoc and name heuristics |
+| `--top N` | How many ranked files to print (default 20) |
 
-You do **not** need an OpenAI/Anthropic key for this slice. LLM calls are not wired yet.
+You do **not** need an OpenAI key. Without `OPENAI_API_KEY`, or with `--no-llm`, responsibilities stay as Javadoc or a name heuristic. The generated Markdown is structural either way.
 
 ### 5. Change settings
 
@@ -175,12 +176,16 @@ The approach, formulas and a worked example are documented in [`design/README.md
 - Each DEEP/SUMMARY file gets a one-sentence responsibility: Javadoc if present, otherwise a name/annotation heuristic, optionally rewritten by an LLM when `OPENAI_API_KEY` is set. `--no-llm` skips the model.
 - `analyze` prints the outlines after the ranking. Approach: [`design/understanding.md`](design/understanding.md).
 
+**Week 3: Documentation Generation** ✓
+- `analyze` writes Markdown under `<repo>/docs` (or `-o`): `README.md`, `architecture.md`, and one page per ranked package.
+- DEEP files get a section (purpose, types, methods, uses). SUMMARY files get a paragraph. LISTED files are a table row.
+- Mermaid package diagrams and `file:line` source links. Approach: [`design/generation.md`](design/generation.md).
+
 ### Upcoming Work
 
-**Week 3: Documentation Generation**
-- Markdown sections from DEEP / SUMMARY / LISTED
-- Mermaid diagrams from the package graph
-- Source references and the understanding outlines
+**Week 4: Verification and Delivery**
+- Check generated claims against the source
+- Delivery format and a final pass over the docs
 
 ## Architecture
 
@@ -286,7 +291,7 @@ The project follows standard Java conventions with:
 
 - **Week 1** (Days 1-5): Foundation ✓
 - **Week 2** (Days 6-10): Code Understanding ✓
-- **Week 3** (Days 11-15): Documentation Generation
+- **Week 3** (Days 11-15): Documentation Generation ✓
 - **Week 4** (Days 16-20): Verification and Delivery
 
 ## Contributing

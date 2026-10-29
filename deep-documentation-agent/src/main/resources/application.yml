@@ -29,6 +29,8 @@ analysis:
     - vendor
     - __pycache__
     - .gradle
+    - docs
+    - output
   ignoreExtensions:
     - .class
     - .jar
@@ -113,7 +115,8 @@ ranking:
   # Share of ranked files that get a deep (per-file) write-up
   deepFraction: 0.2
 
-# Where generated docs will go (Week 3)
+# Where `analyze` writes Markdown. `--output` overrides defaultDirectory (resolved from cwd
+# when relative). generateDiagrams turns Mermaid package graphs on or off.
 output:
   defaultDirectory: docs
   format: markdown

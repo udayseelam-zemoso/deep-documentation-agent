@@ -15,7 +15,7 @@ import java.util.Set;
  * file. A use is a simple-name match: if {@code OrderService} is declared in one outlined file
  * and mentioned in another, that is an edge. Ambiguous names (declared in two files) are skipped.
  *
- * <p>This is the Week 2 knowledge graph. Week 3 documentation will walk it to explain a file
+ * <p>This is the Week 2 knowledge graph. Week 3 documentation walks it to explain a file
  * in terms of the types it owns and the types it depends on, not only in terms of imports.
  */
 public final class KnowledgeGraph {
