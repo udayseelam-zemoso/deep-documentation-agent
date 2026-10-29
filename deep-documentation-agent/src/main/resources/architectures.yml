@@ -1,0 +1,255 @@
+# Patterns used by ArchitectureDetector.
+#
+# Each pattern has a kind (framework, architecture, build, datastore) and a list of signals.
+# Confidence = (weight of signals that hit) / (weight of all signals). A pattern is reported
+# when that fraction is at least analysis.architectureMinConfidence (default 0.3).
+#
+# Signal types:
+#   file-exists   a path relative to the repository root is present
+#   directory     a directory relative to the root is present
+#   filename      any discovered file whose name matches (exact, or "Dockerfile.*" as a prefix)
+#   file-contains a discovered file whose name or extension is in `files` contains `text`
+#                 (regex: true treats text as a regular expression)
+#   file-count    at least `min` discovered files match `files`
+#
+# `files` entries starting with a dot are extensions (.java); anything else is a file name.
+
+patterns:
+  # --- JVM backends ----------------------------------------------------------
+  - name: Spring Boot
+    kind: framework
+    architecture: Spring Boot Application
+    layer: backend
+    suppresses: [Spring]
+    signals:
+      - { type: file-contains, files: [.java], text: "@SpringBootApplication", weight: 0.55 }
+      - { type: file-contains, files: [pom.xml, build.gradle, build.gradle.kts], text: spring-boot, weight: 0.30 }
+      - { type: file-exists, paths: [src/main/resources/application.yml, src/main/resources/application.properties], weight: 0.15 }
+
+  - name: Spring
+    kind: framework
+    architecture: Spring Application
+    layer: backend
+    signals:
+      - { type: file-contains, files: [.java], text: "@(RestController|Controller|Service|Repository)\\b", regex: true, weight: 0.45 }
+      - { type: file-contains, files: [pom.xml, build.gradle, build.gradle.kts], text: "org.springframework", weight: 0.55 }
+
+  - name: Quarkus
+    kind: framework
+    architecture: Quarkus Application
+    layer: backend
+    signals:
+      - { type: file-contains, files: [pom.xml, build.gradle, build.gradle.kts], text: quarkus, weight: 0.60 }
+      - { type: file-contains, files: [.java], text: "@QuarkusMain|io.quarkus", regex: true, weight: 0.40 }
+
+  - name: Micronaut
+    kind: framework
+    architecture: Micronaut Application
+    layer: backend
+    signals:
+      - { type: file-contains, files: [pom.xml, build.gradle, build.gradle.kts], text: micronaut, weight: 0.60 }
+      - { type: file-contains, files: [.java], text: io.micronaut, weight: 0.40 }
+
+  # --- JavaScript / TypeScript ----------------------------------------------
+  - name: Next.js
+    kind: framework
+    architecture: Next.js Application
+    layer: frontend
+    suppresses: [React]
+    signals:
+      - { type: file-contains, files: [package.json], text: '"next"\s*:', regex: true, weight: 0.70 }
+      - { type: filename, files: [next.config.js, next.config.mjs, next.config.ts], weight: 0.30 }
+
+  - name: React
+    kind: framework
+    architecture: React Frontend
+    layer: frontend
+    signals:
+      - { type: file-contains, files: [package.json], text: '"react"\s*:', regex: true, weight: 0.65 }
+      - { type: filename, files: [.jsx, .tsx], weight: 0.20 }
+      - { type: file-exists, paths: [src/App.jsx, src/App.tsx, src/App.js, src/main.tsx], weight: 0.15 }
+
+  - name: Vue
+    kind: framework
+    architecture: Vue Frontend
+    layer: frontend
+    signals:
+      - { type: file-contains, files: [package.json], text: '"vue"\s*:', regex: true, weight: 0.70 }
+      - { type: filename, files: [.vue], weight: 0.30 }
+
+  - name: Angular
+    kind: framework
+    architecture: Angular Frontend
+    layer: frontend
+    signals:
+      - { type: file-contains, files: [package.json], text: '"@angular/core"\s*:', regex: true, weight: 0.70 }
+      - { type: filename, files: [angular.json], weight: 0.30 }
+
+  - name: Svelte
+    kind: framework
+    architecture: Svelte Frontend
+    layer: frontend
+    signals:
+      - { type: file-contains, files: [package.json], text: '"svelte"\s*:', regex: true, weight: 0.70 }
+      - { type: filename, files: [.svelte], weight: 0.30 }
+
+  - name: NestJS
+    kind: framework
+    architecture: NestJS Application
+    layer: backend
+    suppresses: [Express.js]
+    signals:
+      - { type: file-contains, files: [package.json], text: '"@nestjs/core"\s*:', regex: true, weight: 0.70 }
+      - { type: file-contains, files: [.ts], text: "@Module\\(|@Controller\\(", regex: true, weight: 0.30 }
+
+  - name: Express.js
+    kind: framework
+    architecture: Express.js Backend
+    layer: backend
+    signals:
+      - { type: file-contains, files: [package.json], text: '"express"\s*:', regex: true, weight: 0.80 }
+      - { type: file-contains, files: [.js, .ts], text: "\\b(?:express|Router)\\s*\\(", regex: true, weight: 0.20 }
+
+  # --- Python / Ruby / PHP / .NET / Go --------------------------------------
+  - name: Django
+    kind: framework
+    architecture: Django Application
+    layer: backend
+    signals:
+      - { type: filename, files: [manage.py], weight: 0.45 }
+      - { type: file-contains, files: [requirements.txt, pyproject.toml, setup.py], text: Django, weight: 0.35 }
+      - { type: directory, paths: [templates], weight: 0.20 }
+
+  - name: Flask
+    kind: framework
+    architecture: Flask Application
+    layer: backend
+    signals:
+      - { type: file-contains, files: [requirements.txt, pyproject.toml], text: "(?i)\\bFlask\\b", regex: true, weight: 0.55 }
+      - { type: file-contains, files: [.py], text: "\\bFlask\\s*\\(", regex: true, weight: 0.45 }
+
+  - name: FastAPI
+    kind: framework
+    architecture: FastAPI Application
+    layer: backend
+    signals:
+      - { type: file-contains, files: [requirements.txt, pyproject.toml], text: "(?i)\\bfastapi\\b", regex: true, weight: 0.55 }
+      - { type: file-contains, files: [.py], text: "\\bFastAPI\\s*\\(", regex: true, weight: 0.45 }
+
+  - name: Rails
+    kind: framework
+    architecture: Ruby on Rails Application
+    layer: backend
+    signals:
+      - { type: file-exists, paths: [config/application.rb, bin/rails], weight: 0.50 }
+      - { type: file-contains, files: [Gemfile], text: "['\"]rails['\"]", regex: true, weight: 0.50 }
+
+  - name: Laravel
+    kind: framework
+    architecture: Laravel Application
+    layer: backend
+    signals:
+      - { type: filename, files: [artisan], weight: 0.45 }
+      - { type: file-contains, files: [composer.json], text: '"laravel/framework"', weight: 0.55 }
+
+  - name: ASP.NET
+    kind: framework
+    architecture: ASP.NET Application
+    layer: backend
+    signals:
+      - { type: file-contains, files: [.csproj], text: Microsoft.AspNetCore, weight: 0.70 }
+      - { type: file-contains, files: [.cs], text: "WebApplication\\.CreateBuilder|\\[ApiController\\]", regex: true, weight: 0.30 }
+
+  - name: Gin
+    kind: framework
+    architecture: Go HTTP Service
+    layer: backend
+    signals:
+      - { type: file-contains, files: [go.mod], text: github.com/gin-gonic/gin, weight: 0.70 }
+      - { type: file-contains, files: [.go], text: "gin\\.(Default|New)\\s*\\(", regex: true, weight: 0.30 }
+
+  # --- Mobile / CLI / serverless --------------------------------------------
+  - name: Android
+    kind: framework
+    architecture: Android Application
+    layer: mobile
+    signals:
+      - { type: filename, files: [AndroidManifest.xml], weight: 0.60 }
+      - { type: file-contains, files: [build.gradle, build.gradle.kts], text: com.android, weight: 0.40 }
+
+  - name: Flutter
+    kind: framework
+    architecture: Flutter Application
+    layer: mobile
+    signals:
+      - { type: file-exists, paths: [pubspec.yaml], weight: 0.40 }
+      - { type: file-contains, files: [pubspec.yaml], text: "flutter:", weight: 0.60 }
+
+  - name: Picocli
+    kind: framework
+    architecture: Command-line Application
+    layer: backend
+    signals:
+      - { type: file-contains, files: [pom.xml, build.gradle, build.gradle.kts], text: picocli, weight: 0.55 }
+      - { type: file-contains, files: [.java], text: picocli.CommandLine, weight: 0.45 }
+
+  - name: Serverless
+    kind: architecture
+    architecture: Serverless Application
+    layer: backend
+    signals:
+      - { type: filename, files: [serverless.yml, serverless.yaml, template.yaml, template.yml], weight: 0.60 }
+      - { type: directory, paths: [functions, netlify/functions], weight: 0.40 }
+
+  # --- Build tools ----------------------------------------------------------
+  - name: Maven
+    kind: build
+    signals:
+      - { type: filename, files: [pom.xml], weight: 1.0 }
+
+  - name: Gradle
+    kind: build
+    signals:
+      - { type: filename, files: [build.gradle, build.gradle.kts, settings.gradle, settings.gradle.kts], weight: 1.0 }
+
+  - name: npm
+    kind: build
+    signals:
+      - { type: filename, files: [package.json], weight: 1.0 }
+
+  - name: Poetry
+    kind: build
+    signals:
+      - { type: file-exists, paths: [poetry.lock], weight: 0.60 }
+      - { type: file-contains, files: [pyproject.toml], text: "[tool.poetry]", weight: 0.40 }
+
+  - name: Cargo
+    kind: build
+    signals:
+      - { type: filename, files: [Cargo.toml], weight: 1.0 }
+
+  - name: Go modules
+    kind: build
+    signals:
+      - { type: filename, files: [go.mod], weight: 1.0 }
+
+  # --- Datastores (from dependencies, not running servers) ------------------
+  - name: PostgreSQL
+    kind: datastore
+    signals:
+      - { type: file-contains, files: [pom.xml, build.gradle, build.gradle.kts, package.json, requirements.txt, go.mod, Gemfile], text: "(?i)postgres", regex: true, weight: 1.0 }
+
+  - name: MySQL
+    kind: datastore
+    signals:
+      - { type: file-contains, files: [pom.xml, build.gradle, build.gradle.kts, package.json, requirements.txt, go.mod], text: "(?i)mysql", regex: true, weight: 1.0 }
+
+  - name: MongoDB
+    kind: datastore
+    signals:
+      - { type: file-contains, files: [pom.xml, build.gradle, build.gradle.kts, package.json, requirements.txt, go.mod], text: "(?i)mongo", regex: true, weight: 1.0 }
+
+  - name: Redis
+    kind: datastore
+    signals:
+      - { type: file-contains, files: [pom.xml, build.gradle, build.gradle.kts, package.json, requirements.txt, go.mod], text: "(?i)redis", regex: true, weight: 1.0 }

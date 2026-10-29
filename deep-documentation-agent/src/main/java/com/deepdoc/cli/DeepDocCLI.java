@@ -1,10 +1,30 @@
 package com.deepdoc.cli;
 
+import com.deepdoc.analyzer.ArchitectureDetector;
 import com.deepdoc.analyzer.RepositoryAnalyzer;
 import com.deepdoc.config.AppConfig;
 import com.deepdoc.config.ConfigLoader;
+import com.deepdoc.config.GitSection;
+import com.deepdoc.graph.DependencyGraph;
+import com.deepdoc.graph.DependencyGraphBuilder;
+import com.deepdoc.graph.PackageEdge;
+import com.deepdoc.graph.PackageNode;
+import com.deepdoc.model.DetectedModule;
+import com.deepdoc.model.DetectedPattern;
 import com.deepdoc.model.FileInfo;
+import com.deepdoc.model.RepositoryContext;
 import com.deepdoc.model.RepositoryManifest;
+import com.deepdoc.model.SourceReference;
+import com.deepdoc.ranker.ActivityScores;
+import com.deepdoc.ranker.DocLevel;
+import com.deepdoc.ranker.EntryPointDetector;
+import com.deepdoc.ranker.FileRank;
+import com.deepdoc.ranker.ImportanceRanker;
+import com.deepdoc.ranker.PackageRank;
+import com.deepdoc.ranker.RankingResult;
+import com.deepdoc.repository.CommitRecord;
+import com.deepdoc.repository.GitInterface;
+import org.jgrapht.Graph;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -15,9 +35,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
@@ -42,7 +66,10 @@ public class DeepDocCLI implements Callable<Integer> {
             boolean verbose,
             
             @Option(names = {"--no-llm"}, description = "Skip LLM inference (structure-only documentation)")
-            boolean noLlm
+            boolean noLlm,
+
+            @Option(names = {"--top"}, defaultValue = "20", description = "Number of ranked files to print (default: ${DEFAULT-VALUE})")
+            int top
     ) {
         try {
             AppConfig config = ConfigLoader.load();
@@ -59,12 +86,23 @@ public class DeepDocCLI implements Callable<Integer> {
             RepositoryManifest manifest = analyzer.analyze(repoPath);
             
             printManifestSummary(manifest);
+
+            GitHistory history = loadHistory(config.getGit(), manifest);
+            DependencyGraph graph = new DependencyGraphBuilder(config.getGraph())
+                    .build(manifest, history.commits, history.workTree);
+            printDependencyGraph(graph);
+
+            ActivityScores activity = history.commits.isEmpty() ? ActivityScores.none()
+                    : ActivityScores.fromCommits(graph, history.commits, history.workTree,
+                            config.getGit().getHalfLifeDays(), Instant.now().getEpochSecond());
+            Set<FileInfo> entryPoints = EntryPointDetector.detect(graph);
+            RankingResult ranking = new ImportanceRanker(config.getRanking()).rank(graph, activity, entryPoints);
+            printRanking(graph, ranking, top);
             
             logger.info("");
             logger.info("✓ Repository analysis completed successfully");
             logger.info("");
             logger.info("Next steps:");
-            logger.info("  - File importance ranking (Week 1, Day 3-4)");
             logger.info("  - Code understanding and LLM integration (Week 2)");
             logger.info("  - Documentation generation (Week 3)");
             
@@ -105,15 +143,47 @@ public class DeepDocCLI implements Callable<Integer> {
                 );
         logger.info("");
         
-        logger.info("Architecture: {}", manifest.getContext().getDetectedArchitecture());
-        if (!manifest.getContext().getFrameworks().isEmpty()) {
-            logger.info("Frameworks: {}", String.join(", ", manifest.getContext().getFrameworks()));
+        RepositoryContext context = manifest.getContext();
+        logger.info("Architecture: {} ({}, {})", context.getDetectedArchitecture(),
+                ArchitectureDetector.percent(context.getArchitectureConfidence()),
+                context.getArchitectureStyle().displayName());
+        if (!context.getModules().isEmpty()) {
+            logger.info("Modules: {}", context.getModules().size());
+            for (DetectedModule module : context.getModules()) {
+                logger.info("  {} [{}{}]", module.getRelativePath() + "/", module.getBuildSystem(),
+                        module.isDeployable() ? ", deployable" : "");
+            }
         }
-        if (!manifest.getContext().getTechnologies().isEmpty()) {
+        if (!context.getFrameworks().isEmpty()) {
+            List<String> named = new ArrayList<>();
+            for (DetectedPattern pattern : context.getPatterns()) {
+                if (pattern.isFramework()) {
+                    named.add(pattern.getName() + " " + ArchitectureDetector.percent(pattern.getConfidence()));
+                }
+            }
+            logger.info("Frameworks: {}", named.isEmpty() ? String.join(", ", context.getFrameworks())
+                    : String.join(", ", named));
+        }
+        if (!context.getTechnologies().isEmpty()) {
             logger.info("Technologies:");
-            manifest.getContext().getTechnologies().forEach((key, value) -> 
-                logger.info("  {} - {}", key, value)
-            );
+            context.getTechnologies().forEach((key, value) ->
+                    logger.info("  {} - {}", key, value));
+        }
+        List<SourceReference> evidence = new ArrayList<>();
+        for (DetectedPattern pattern : context.getPatterns()) {
+            if (pattern.isFramework()) {
+                evidence.addAll(pattern.getEvidence());
+            }
+        }
+        if (!evidence.isEmpty()) {
+            logger.info("Evidence:");
+            int shown = 0;
+            for (SourceReference ref : evidence) {
+                if (shown++ == 5) break;
+                Path relative = manifest.getRepositoryPath().relativize(ref.getFile());
+                logger.info("  {}:{}{}", relative, ref.getStartLine(),
+                        ref.getSnippet() == null ? "" : "  " + ref.getSnippet());
+            }
         }
         logger.info("Git History: {}", manifest.getContext().hasGitHistory() ? "Available" : "Not available");
         logger.info("");
@@ -132,6 +202,91 @@ public class DeepDocCLI implements Callable<Integer> {
                 relativePath, 
                 file.getLinesOfCode(), 
                 file.getLanguage());
+        }
+    }
+
+    /** Coverage counters, then one line per package with its outgoing package edges (strongest first). */
+    private void printDependencyGraph(DependencyGraph graph) {
+        Graph<PackageNode, PackageEdge> packages = graph.getPackageGraph();
+        logger.info("");
+        logger.info("Dependency Graph");
+        logger.info("----------------");
+        logger.info("Files in graph: {} (tests excluded: {}, non-code files: {}, parsed by the generic fallback: {})",
+                graph.getFileGraph().vertexSet().size(), graph.getExcludedTestFiles(), graph.getNonCodeFiles(),
+                graph.getGenericFallbackFiles());
+        logger.info("Languages in graph: {}", graph.getLanguageCounts().entrySet().stream()
+                .map(e -> e.getKey() + " " + e.getValue())
+                .collect(Collectors.joining(", ")));
+        logger.info("File dependencies: {} ({} inferred from co-changes)", graph.getFileGraph().edgeSet().size(),
+                graph.getCoChangeEdges());
+        logger.info("Packages: {} at depth {}{}", packages.vertexSet().size(), graph.getGroupingDepth(),
+                graph.getStrippedPrefixes().isEmpty() ? ""
+                        : " (common prefix " + String.join(", ", graph.getStrippedPrefixes()) + " stripped)");
+        logger.info("Package dependencies: {}", packages.edgeSet().size());
+        logger.info("");
+
+        for (PackageNode node : graph.getPackages()) {
+            String targets = packages.outgoingEdgesOf(node).stream()
+                    .sorted(Comparator.comparingInt(PackageEdge::getImportCount).reversed())
+                    .map(e -> packages.getEdgeTarget(e).getName() + "(" + e.getImportCount() + ")")
+                    .collect(Collectors.joining(" "));
+            logger.info("  {} [{} files, {} lines, {} internal]{}", node.getName(), node.getFiles().size(),
+                    node.getTotalLines(), node.getInternalDependencies(), targets.isEmpty() ? "" : " -> " + targets);
+        }
+    }
+
+    /** Commits read once and shared by the graph (co-change edges) and the ranking (activity). */
+    private static final class GitHistory {
+        final List<CommitRecord> commits;
+        final Path workTree;
+
+        GitHistory(List<CommitRecord> commits, Path workTree) {
+            this.commits = commits;
+            this.workTree = workTree;
+        }
+    }
+
+    private GitHistory loadHistory(GitSection git, RepositoryManifest manifest) {
+        GitHistory none = new GitHistory(Collections.emptyList(), manifest.getRepositoryPath());
+        if (!git.isEnabled() || !manifest.getContext().hasGitHistory()) {
+            return none;
+        }
+        try (GitInterface gitInterface = new GitInterface(manifest.getRepositoryPath())) {
+            return new GitHistory(gitInterface.getCommitHistory(
+                    git.getHistoryMonths(), git.getMaxCommits(), git.getBulkCommitFileLimit()),
+                    gitInterface.getWorkTree());
+        } catch (IOException e) {
+            logger.warn("Git history unavailable, ranking on structure only: {}", e.getMessage());
+            return none;
+        }
+    }
+
+    /** Package table (score, structure and activity percentiles, Ca/Ce, role), then the top files. */
+    private void printRanking(DependencyGraph graph, RankingResult ranking, int top) {
+        logger.info("");
+        logger.info("Importance Ranking ({})", ranking.usedActivity()
+                ? "structure + Git activity" : "structure only, no usable Git history");
+        logger.info("------------------");
+        logger.info("Packages:");
+        logger.info(String.format("  %-28s %6s %9s %9s %8s  %s", "package", "score", "structure", "activity", "Ca/Ce", "role"));
+        for (PackageRank p : ranking.getPackages()) {
+            logger.info(String.format("  %-28s %6.2f %9.2f %9.2f %8s  %s", p.getName(), p.getScore(),
+                    p.getStructurePercentile(), p.getActivityPercentile(),
+                    p.getAfferent() + "/" + p.getEfferent(), p.getRole()));
+        }
+        logger.info("");
+        logger.info("Documentation levels: {} deep, {} summary, {} listed",
+                ranking.filesAt(DocLevel.DEEP).size(), ranking.filesAt(DocLevel.SUMMARY).size(),
+                ranking.filesAt(DocLevel.LISTED).size());
+        logger.info("");
+        logger.info("Top {} files:", Math.min(top, ranking.getFiles().size()));
+        logger.info(String.format("  %-4s %-60s %8s %6s %-8s %s", "#", "file", "priority", "local", "level", "flags"));
+        List<FileRank> files = ranking.getFiles();
+        for (int i = 0; i < Math.min(top, files.size()); i++) {
+            FileRank f = files.get(i);
+            String flags = (f.isEntryPoint() ? "entry " : "") + (f.isBoundary() ? "boundary" : "");
+            logger.info(String.format("  %-4d %-60s %8.3f %6.2f %-8s %s", i + 1, graph.relativePath(f.getFile()),
+                    f.getPriority(), f.getLocalScore(), f.getLevel(), flags.trim()));
         }
     }
 

@@ -11,7 +11,7 @@ The Deep Documentation Agent automatically analyzes code structure, infers archi
 - **Fully Autonomous**: Requires zero user input - just point it at a repository
 - **Explanatory Documentation**: Captures the "why" behind design decisions, not just the "what"
 - **Verifiable Claims**: Every generated claim links to specific source code locations
-- **Multi-Language Support**: Java and JavaScript/TypeScript in MVP
+- **Multi-Language Support**: dedicated dependency extraction for Java/Kotlin/Scala, JS/TS, Python, Go, C#, C/C++, Rust, Ruby, PHP, Swift and shell, plus a generic fallback for every other language
 - **Architecture Detection**: Automatically detects Spring Boot, React, Express.js, and more
 - **Git History Analysis**: Extracts insights from commit history and code churn
 - **Fast Processing**: Processes 100K-line repositories in 30-60 minutes
@@ -127,18 +127,54 @@ mvn test
 
 **Deliverable**: CLI that analyzes repositories and outputs file lists with detected architecture ✓
 
+**Day 3-4: Importance Ranking** ✓
+- ✓ File dependency graph from Java imports (incl. same-package usage) and JS/TS `import`/`require` (`com.deepdoc.graph`)
+- ✓ Package roll-up at an auto-chosen depth, with weighted package edges and import-line evidence
+- ✓ Recency-weighted Git activity (half-life decay, merge and bulk commits ignored)
+- ✓ Personalized weighted PageRank with reverse edges and entry-point priors (`com.deepdoc.ranker`)
+- ✓ Package score, in-package file score, global priority, and DEEP / SUMMARY / LISTED levels
+- ✓ Tunable from the `graph`, `git` and `ranking` sections of `application.yml`
+
+`analyze` now also prints the package graph, the ranked packages (with Ca/Ce and role) and the top files; use `--top N` to change how many.
+
+The approach, formulas and a worked example are documented in [`design/README.md`](design/README.md).
+
+**Day 5: Architecture Detection** ✓
+- Patterns live in `src/main/resources/architectures.yml` (Spring Boot, Quarkus, React, Next.js, Django, Rails, …). Confidence is the fraction of each pattern's signal weight that matched.
+- More specific patterns hide weaker siblings (Spring Boot hides Spring; Next.js hides React).
+- Build modules are detected for Maven, Gradle, npm workspaces, Go, Cargo, Python and .NET. A module is deployable when it has a `main`, a Dockerfile or a start script.
+- Style is counted from those modules plus Docker Compose / Dockerfiles: monolith, modular monolith, microservices, or library.
+- The CLI prints the label with confidence and style, the module list, and a few evidence lines.
+- Approach: [`design/architecture.md`](design/architecture.md).
+
+**Language coverage** ✓
+- Languages are defined in `src/main/resources/languages.yml` (about 65 entries: extensions, special file names such as `Dockerfile`, and shebang interpreters). Add a language there; no code change is needed for it to be detected.
+- Dedicated dependency extractors (`com.deepdoc.graph.*DependencyExtractor`):
+
+| Family | Languages | What becomes an edge |
+|---|---|---|
+| JVM | Java, Kotlin, Scala, Groovy | imports, wildcard imports, fully-qualified names without an import, same-package types |
+| JavaScript | JS, TS, Vue, Svelte | relative imports, `tsconfig`/`jsconfig` `paths` and `baseUrl` (with `extends`), workspace packages, `graph.jsAliases`, `@/` and `~/` |
+| Python | Python | `import` / `from … import`, relative imports, submodule imports |
+| Go | Go | import paths resolved via `go.mod`, linked to the file declaring the used identifier |
+| C# | C# | `using` (incl. static, alias, global), namespaces, qualified type names |
+| C family | C, C++, Objective-C | `#include` / `#import` of project headers |
+| Rust | Rust | `mod x;`, `use` trees, `crate::` / `super::` / `self::` paths |
+| Ruby | Ruby | `require_relative`, `require`, Rails-style autoloaded constants |
+| PHP | PHP | `use` (incl. grouped), namespaces, `require`/`include` |
+| Swift | Swift | type names declared in exactly one or two files |
+| Shell | sh, bash, zsh | `source` / `.` |
+
+- Every other programming language (Clojure, Elixir, Dart, Lua, Haskell, Perl, Erlang, …) goes through `GenericDependencyExtractor`, which links quoted file paths, module names that map onto paths (`Data.Cart` to `Data/Cart.hs`, `Shop.CartItem` to `shop/cart_item.ex`) and type names declared in exactly one file.
+- For those fallback languages, files repeatedly committed together are also linked (`CoChangeEdges`, tunable with `graph.coChange*`).
+- Entry points and test-file conventions are recognised for every family above.
+
 ### Upcoming Work
 
-**Day 3-4: Importance Ranking**
-- Dependency graph builder (JGraphT)
-- Git churn analysis
-- Importance scoring algorithm
-- Integration with repository analyzer
-
-**Day 5: Architecture Detection Enhancement**
-- Advanced pattern matching
-- Multi-module support
-- Confidence scoring
+**Week 2: Code Understanding**
+- Java / JS AST parsing
+- LLM integration
+- Knowledge graph
 
 ## Architecture
 
