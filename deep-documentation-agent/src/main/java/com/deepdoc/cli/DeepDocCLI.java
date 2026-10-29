@@ -23,6 +23,9 @@ import com.deepdoc.ranker.ImportanceRanker;
 import com.deepdoc.ranker.PackageRank;
 import com.deepdoc.ranker.RankingResult;
 import com.deepdoc.repository.CommitRecord;
+import com.deepdoc.understand.CodeUnderstandingService;
+import com.deepdoc.understand.FileOutline;
+import com.deepdoc.understand.UnderstandingResult;
 import com.deepdoc.repository.GitInterface;
 import org.jgrapht.Graph;
 import picocli.CommandLine;
@@ -98,12 +101,15 @@ public class DeepDocCLI implements Callable<Integer> {
             Set<FileInfo> entryPoints = EntryPointDetector.detect(graph);
             RankingResult ranking = new ImportanceRanker(config.getRanking()).rank(graph, activity, entryPoints);
             printRanking(graph, ranking, top);
+
+            UnderstandingResult understanding = new CodeUnderstandingService(config, !noLlm)
+                    .understand(graph, ranking, manifest.getContext().getDetectedArchitecture());
+            printUnderstanding(graph, understanding, top);
             
             logger.info("");
             logger.info("✓ Repository analysis completed successfully");
             logger.info("");
             logger.info("Next steps:");
-            logger.info("  - Code understanding and LLM integration (Week 2)");
             logger.info("  - Documentation generation (Week 3)");
             
             return 0;
@@ -287,6 +293,42 @@ public class DeepDocCLI implements Callable<Integer> {
             String flags = (f.isEntryPoint() ? "entry " : "") + (f.isBoundary() ? "boundary" : "");
             logger.info(String.format("  %-4d %-60s %8.3f %6.2f %-8s %s", i + 1, graph.relativePath(f.getFile()),
                     f.getPriority(), f.getLocalScore(), f.getLevel(), flags.trim()));
+        }
+    }
+
+    /** Outlines of DEEP/SUMMARY files: responsibility, types, and which other outlined files they use. */
+    private void printUnderstanding(DependencyGraph graph, UnderstandingResult understanding, int top) {
+        logger.info("");
+        logger.info("Code Understanding");
+        logger.info("------------------");
+        logger.info("Outlined {} files ({} JavaParser, {} lexical, {} failed); LLM: {}",
+                understanding.getOutlines().size(), understanding.getAstFiles(),
+                understanding.getLexicalFiles(), understanding.getFailedFiles(), understanding.getLlmMode());
+        logger.info("Symbols: {} types, {} methods/functions, {} cross-file uses",
+                understanding.getKnowledge().typeCount(), understanding.getKnowledge().methodCount(),
+                understanding.getKnowledge().useEdgeCount());
+        logger.info("");
+        List<FileOutline> outlines = understanding.getOutlines();
+        int shown = Math.min(top, outlines.size());
+        for (int i = 0; i < shown; i++) {
+            FileOutline outline = outlines.get(i);
+            logger.info("  {} [{}] {}", graph.relativePath(outline.getFile()), outline.getLevel(),
+                    outline.getResponsibility());
+            if (!outline.typeNames().isEmpty()) {
+                logger.info("      types: {}", String.join(", ", outline.typeNames()));
+            }
+            List<String> methods = outline.methodNames();
+            if (!methods.isEmpty()) {
+                logger.info("      methods: {}", String.join(", ",
+                        methods.size() > 8 ? methods.subList(0, 8) : methods));
+            }
+            List<String> used = new ArrayList<>();
+            for (FileInfo target : understanding.getKnowledge().uses(outline.getFile())) {
+                used.add(graph.relativePath(target));
+            }
+            if (!used.isEmpty()) {
+                logger.info("      uses: {}", String.join(", ", used));
+            }
         }
     }
 

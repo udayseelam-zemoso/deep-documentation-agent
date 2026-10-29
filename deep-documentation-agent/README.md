@@ -169,12 +169,18 @@ The approach, formulas and a worked example are documented in [`design/README.md
 - For those fallback languages, files repeatedly committed together are also linked (`CoChangeEdges`, tunable with `graph.coChange*`).
 - Entry points and test-file conventions are recognised for every family above.
 
+**Week 2: Code Understanding** ✓
+- Java files are parsed with JavaParser (AST: types, methods, Javadoc, annotations, extends/implements). Other languages get a lexical outline (same comment-blanking as the graph).
+- A knowledge graph links outlined files that mention each other's unique type names.
+- Each DEEP/SUMMARY file gets a one-sentence responsibility: Javadoc if present, otherwise a name/annotation heuristic, optionally rewritten by an LLM when `OPENAI_API_KEY` is set. `--no-llm` skips the model.
+- `analyze` prints the outlines after the ranking. Approach: [`design/understanding.md`](design/understanding.md).
+
 ### Upcoming Work
 
-**Week 2: Code Understanding**
-- Java / JS AST parsing
-- LLM integration
-- Knowledge graph
+**Week 3: Documentation Generation**
+- Markdown sections from DEEP / SUMMARY / LISTED
+- Mermaid diagrams from the package graph
+- Source references and the understanding outlines
 
 ## Architecture
 
@@ -279,7 +285,7 @@ The project follows standard Java conventions with:
 ## Roadmap
 
 - **Week 1** (Days 1-5): Foundation ✓
-- **Week 2** (Days 6-10): Code Understanding
+- **Week 2** (Days 6-10): Code Understanding ✓
 - **Week 3** (Days 11-15): Documentation Generation
 - **Week 4** (Days 16-20): Verification and Delivery
 
