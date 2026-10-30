@@ -87,7 +87,7 @@ java -jar target/deep-documentation-agent-1.0.0.jar analyze /path/to/repo --verb
 
 | Option | Meaning today |
 |---|---|
-| `analyze <path>` | Scan the repo and print a summary |
+| `analyze <path>` | Scan the repo, rank files, and print Java AST outlines |
 | `-v`, `--verbose` | Print a stack trace if something fails |
 | `-o`, `--output` | Reserved for later (docs output folder) |
 | `--no-llm` | Reserved for later (skip LLM) |
@@ -169,12 +169,22 @@ The approach, formulas and a worked example are documented in [`design/README.md
 - For those fallback languages, files repeatedly committed together are also linked (`CoChangeEdges`, tunable with `graph.coChange*`).
 - Entry points and test-file conventions are recognised for every family above.
 
+**Week 2, Day 6-7: Java AST, facts, knowledge graph** ✓
+- Ranked Java files are parsed with JavaParser (types, methods, Javadoc, annotations, extends/implements, mentioned names).
+- Week 1 **DEEP / SUMMARY / LISTED** stamps decide what happens: DEEP and SUMMARY are outlined; LISTED is skipped by default. DEEP facts include methods; SUMMARY facts are a paragraph (type, Javadoc, annotations, parents, imports, references).
+- Those fields are flattened into named facts (`DECLARES_TYPE`, `DECLARES_METHOD`, `REFERENCES`, …).
+- A knowledge graph links outlined files that mention each other's unique type names (including same-package types that never appear in an import).
+- `analyze` prints a DEEP group then a SUMMARY group after ranking. Approach: [`design/understanding.md`](design/understanding.md).
+
 ### Upcoming Work
 
-**Week 2: Code Understanding**
-- Java / JS AST parsing
-- LLM integration
-- Knowledge graph
+**Week 2, Day 8-10**
+- Lexical outlines for JS/TS and other languages
+- One-sentence responsibilities (Javadoc / name heuristic / optional LLM)
+
+**Week 3: Documentation Generation**
+- Markdown sections from DEEP / SUMMARY / LISTED
+- Mermaid diagrams and source references
 
 ## Architecture
 
@@ -279,7 +289,8 @@ The project follows standard Java conventions with:
 ## Roadmap
 
 - **Week 1** (Days 1-5): Foundation ✓
-- **Week 2** (Days 6-10): Code Understanding
+- **Week 2** (Days 6-7): Java AST, fact extraction, knowledge graph ✓
+- **Week 2** (Days 8-10): Lexical outlines and responsibilities
 - **Week 3** (Days 11-15): Documentation Generation
 - **Week 4** (Days 16-20): Verification and Delivery
 

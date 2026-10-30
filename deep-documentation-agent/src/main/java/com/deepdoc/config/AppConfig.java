@@ -12,6 +12,7 @@ public class AppConfig {
     private RankingSection ranking = new RankingSection();
     private OutputSection output = new OutputSection();
     private LlmSection llm = new LlmSection();
+    private UnderstandSection understand = new UnderstandSection();
 
     public AppSection getApp() {
         return app;
@@ -67,5 +68,13 @@ public class AppConfig {
 
     public void setLlm(LlmSection llm) {
         this.llm = llm;
+    }
+
+    public UnderstandSection getUnderstand() {
+        return understand;
+    }
+
+    public void setUnderstand(UnderstandSection understand) {
+        this.understand = understand;
     }
 }

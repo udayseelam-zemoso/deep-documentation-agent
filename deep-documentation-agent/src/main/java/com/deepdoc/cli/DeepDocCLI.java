@@ -23,6 +23,10 @@ import com.deepdoc.ranker.ImportanceRanker;
 import com.deepdoc.ranker.PackageRank;
 import com.deepdoc.ranker.RankingResult;
 import com.deepdoc.repository.CommitRecord;
+import com.deepdoc.understand.ExtractedFact;
+import com.deepdoc.understand.FileOutline;
+import com.deepdoc.understand.JavaUnderstandingService;
+import com.deepdoc.understand.UnderstandingResult;
 import com.deepdoc.repository.GitInterface;
 import org.jgrapht.Graph;
 import picocli.CommandLine;
@@ -98,12 +102,15 @@ public class DeepDocCLI implements Callable<Integer> {
             Set<FileInfo> entryPoints = EntryPointDetector.detect(graph);
             RankingResult ranking = new ImportanceRanker(config.getRanking()).rank(graph, activity, entryPoints);
             printRanking(graph, ranking, top);
+
+            UnderstandingResult understanding = new JavaUnderstandingService(config).understand(ranking);
+            printUnderstanding(graph, understanding, top);
             
             logger.info("");
             logger.info("✓ Repository analysis completed successfully");
             logger.info("");
             logger.info("Next steps:");
-            logger.info("  - Code understanding and LLM integration (Week 2)");
+            logger.info("  - Day 8-10: lexical outlines, responsibility sentences, optional LLM");
             logger.info("  - Documentation generation (Week 3)");
             
             return 0;
@@ -287,6 +294,69 @@ public class DeepDocCLI implements Callable<Integer> {
             String flags = (f.isEntryPoint() ? "entry " : "") + (f.isBoundary() ? "boundary" : "");
             logger.info(String.format("  %-4d %-60s %8.3f %6.2f %-8s %s", i + 1, graph.relativePath(f.getFile()),
                     f.getPriority(), f.getLocalScore(), f.getLevel(), flags.trim()));
+        }
+    }
+
+    /**
+     * Outlines grouped the way Week 3 will write them: DEEP (full method facts) first,
+     * then SUMMARY (paragraph facts). LISTED files are only shown when they were parsed.
+     */
+    private void printUnderstanding(DependencyGraph graph, UnderstandingResult understanding, int top) {
+        logger.info("");
+        logger.info("Java understanding (Day 6-7)");
+        logger.info("----------------------------");
+        logger.info("DEEP: {} files (method facts); SUMMARY: {} files (paragraph facts); LISTED skipped: {}",
+                understanding.deepOutlines().size(), understanding.summaryOutlines().size(),
+                understanding.getSkippedListed());
+        logger.info("Outlined {} Java files ({} failed, {} non-Java skipped)",
+                understanding.getOutlines().size(), understanding.getFailedFiles(),
+                understanding.getSkippedNonJava());
+        logger.info("Facts: {}; unique types: {}; cross-file uses: {}",
+                understanding.getFactCount(), understanding.getKnowledge().uniqueTypes().size(),
+                understanding.getKnowledge().useEdgeCount());
+        printOutlineGroup(graph, understanding, "DEEP", understanding.deepOutlines(), top, true);
+        printOutlineGroup(graph, understanding, "SUMMARY", understanding.summaryOutlines(), top, false);
+        printOutlineGroup(graph, understanding, "LISTED", understanding.listedOutlines(), top, false);
+    }
+
+    private void printOutlineGroup(DependencyGraph graph, UnderstandingResult understanding,
+                                   String heading, List<FileOutline> outlines, int top, boolean methods) {
+        if (outlines.isEmpty()) {
+            return;
+        }
+        logger.info("");
+        logger.info("{} ({}):", heading, outlines.size());
+        int shown = Math.min(top, outlines.size());
+        for (int i = 0; i < shown; i++) {
+            FileOutline outline = outlines.get(i);
+            logger.info("  {}", graph.relativePath(outline.getFile()));
+            if (!outline.typeNames().isEmpty()) {
+                logger.info("      types: {}", String.join(", ", outline.typeNames()));
+            }
+            if (methods) {
+                List<String> names = outline.methodNames();
+                if (!names.isEmpty()) {
+                    logger.info("      methods: {}", String.join(", ",
+                            names.size() > 8 ? names.subList(0, 8) : names));
+                }
+            }
+            List<ExtractedFact> facts = understanding.getKnowledge().factsOf(outline.getFile());
+            if (!facts.isEmpty()) {
+                int limit = Math.min(6, facts.size());
+                List<String> labels = new ArrayList<>();
+                for (int f = 0; f < limit; f++) {
+                    labels.add(facts.get(f).toString());
+                }
+                logger.info("      facts: {}{}", String.join("; ", labels),
+                        facts.size() > limit ? " …" : "");
+            }
+            List<String> used = new ArrayList<>();
+            for (FileInfo target : understanding.getKnowledge().uses(outline.getFile())) {
+                used.add(graph.relativePath(target));
+            }
+            if (!used.isEmpty()) {
+                logger.info("      uses: {}", String.join(", ", used));
+            }
         }
     }
 

@@ -24,5 +24,7 @@ class ConfigLoaderTest {
         assertThat(config.getRanking().getDeepFraction()).isEqualTo(0.2);
         assertThat(config.getOutput().getDefaultDirectory()).isEqualTo("docs");
         assertThat(config.getLlm().getProvider()).isEqualTo("openai");
+        assertThat(config.getUnderstand().getMaxFiles()).isEqualTo(40);
+        assertThat(config.getUnderstand().isIncludeListed()).isFalse();
     }
 }
