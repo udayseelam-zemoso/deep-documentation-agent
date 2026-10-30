@@ -87,7 +87,8 @@ public final class DeclaredSymbol {
 
     public boolean isType() {
         return kind == SymbolKind.CLASS || kind == SymbolKind.INTERFACE || kind == SymbolKind.ENUM
-                || kind == SymbolKind.RECORD || kind == SymbolKind.ANNOTATION;
+                || kind == SymbolKind.RECORD || kind == SymbolKind.ANNOTATION
+                || kind == SymbolKind.STRUCT || kind == SymbolKind.TYPE;
     }
 
     private static List<String> unmodifiable(List<String> values) {

@@ -24,6 +24,11 @@ class ConfigLoaderTest {
         assertThat(config.getRanking().getDeepFraction()).isEqualTo(0.2);
         assertThat(config.getOutput().getDefaultDirectory()).isEqualTo("docs");
         assertThat(config.getLlm().getProvider()).isEqualTo("openai");
+        assertThat(config.getLlm().getModel()).isEqualTo("gpt-4o-mini");
+        assertThat(config.getLlm().getMaxTokens()).isEqualTo(200);
+        assertThat(config.getLlm().getApiKeyEnv()).isEqualTo("OPENAI_API_KEY");
+        assertThat(config.getLlm().getBaseUrl()).isEqualTo("https://api.openai.com/v1");
+        assertThat(config.getLlm().getTimeoutSeconds()).isEqualTo(20);
         assertThat(config.getUnderstand().getMaxFiles()).isEqualTo(40);
         assertThat(config.getUnderstand().isIncludeListed()).isFalse();
     }

@@ -10,13 +10,15 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Structured view of one Java file after the AST walk: namespace, imports, and the types
- * it declares. {@link #getLevel()} is the Week 1 documentation level (DEEP / SUMMARY / LISTED)
- * and decides how many facts {@link FactExtractor} keeps. Knowledge-graph edges are
- * derived from those facts, not stored here.
+ * Structured view of one source file: namespace, imports, and the types it declares.
+ * {@link #getLevel()} is the Week 1 documentation level (DEEP / SUMMARY / LISTED)
+ * and decides how many facts {@link FactExtractor} keeps. After
+ * {@link ResponsibilityInferrer} runs, {@link #getResponsibility()} is the one sentence
+ * Week 3 will open the file's section with.
  */
 public final class FileOutline {
     public static final String ENGINE_JAVAPARSER = "javaparser";
+    public static final String ENGINE_LEXICAL = "lexical";
 
     private final FileInfo file;
     private final DocLevel level;
@@ -25,6 +27,10 @@ public final class FileOutline {
     private final String namespace;
     private final List<String> imports;
     private final List<DeclaredSymbol> symbols;
+    /** Filled by {@link ResponsibilityInferrer}; empty until then. */
+    private String responsibility = "";
+    /** {@code javadoc}, {@code heuristic}, or {@code llm}. */
+    private String responsibilitySource = "";
 
     public FileOutline(FileInfo file, DocLevel level, String engine, boolean parsed,
                        String namespace, List<String> imports, List<DeclaredSymbol> symbols) {
@@ -67,6 +73,20 @@ public final class FileOutline {
         return symbols;
     }
 
+    public String getResponsibility() {
+        return responsibility;
+    }
+
+    /** {@code javadoc}, {@code heuristic}, or {@code llm}. Empty until inference runs. */
+    public String getResponsibilitySource() {
+        return responsibilitySource;
+    }
+
+    public void setResponsibility(String responsibility, String source) {
+        this.responsibility = responsibility == null ? "" : responsibility.trim();
+        this.responsibilitySource = source == null ? "" : source;
+    }
+
     public List<DeclaredSymbol> types() {
         List<DeclaredSymbol> types = new ArrayList<>();
         for (DeclaredSymbol symbol : symbols) {
@@ -88,6 +108,10 @@ public final class FileOutline {
     public List<String> methodNames() {
         Set<String> names = new LinkedHashSet<>();
         for (DeclaredSymbol symbol : symbols) {
+            if (symbol.getKind() == SymbolKind.METHOD || symbol.getKind() == SymbolKind.FUNCTION
+                    || symbol.getKind() == SymbolKind.CONSTRUCTOR) {
+                names.add(symbol.getName());
+            }
             names.addAll(symbol.getMethods());
         }
         return new ArrayList<>(names);
