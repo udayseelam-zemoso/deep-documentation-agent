@@ -4,7 +4,7 @@ Week 2, Days 6-7. Code lives in `com.deepdoc.understand`.
 
 Week 1 told us *which files matter* and *how they import each other*. That is not enough to write documentation. We also need *what is inside those files*: the types they declare, the methods they expose, and a graph of “this type uses that type” that is based on names in the AST, not only on `import` lines.
 
-This slice is **Java only**. Lexical outlines for other languages, one-sentence responsibilities, and the optional LLM rewrite are Day 8-10.
+This slice is **Java only**. Lexical outlines for other languages and one-sentence responsibilities are [Day 8-10](day-8-10.md).
 
 ## Documentation levels
 
@@ -108,8 +108,8 @@ understand:
 
 ## What this slice does not do
 
-- No lexical parser for JS/TS/Python/… (Day 8-10)
-- No one-sentence responsibility, no LLM (Day 8-10)
+- No lexical parser for JS/TS/Python/… — that is [Day 8-10](day-8-10.md)
+- No one-sentence responsibility, no LLM — that is [Day 8-10](day-8-10.md)
 - No Markdown / Mermaid output (Week 3)
 - No symbol solver, no classpath, no call-graph beyond simple-name mentions
 

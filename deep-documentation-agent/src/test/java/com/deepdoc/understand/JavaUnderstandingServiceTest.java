@@ -55,6 +55,15 @@ class JavaUnderstandingServiceTest {
                 .noneMatch(f -> f.getKind() == FactKind.DECLARES_METHOD);
         assertThat(result.getKnowledge().factsOf(controller))
                 .anyMatch(f -> f.getKind() == FactKind.ANNOTATED && f.getObject().equals("RestController"));
+
+        assertThat(result.getLlmMode()).isEqualTo("heuristic");
+        assertThat(result.getKnowledge().outlineOf(service).getResponsibility())
+                .isEqualTo("Creates an Order after validation.");
+        assertThat(result.getKnowledge().outlineOf(service).getResponsibilitySource()).isEqualTo("javadoc");
+        assertThat(result.getKnowledge().outlineOf(order).getResponsibility()).isEqualTo("Order class.");
+        assertThat(result.getKnowledge().outlineOf(controller).getResponsibility())
+                .isEqualTo("Handles HTTP requests for order.");
+        assertThat(result.getKnowledge().outlineOf(controller).getResponsibilitySource()).isEqualTo("heuristic");
     }
 
     @Test
@@ -70,8 +79,8 @@ class JavaUnderstandingServiceTest {
 
         FileInfo validator = fx.file("src/main/java/com/acme/shop/order/OrderValidator.java");
         assertThat(result.getAstFiles()).isEqualTo(4);
+        assertThat(result.getLexicalFiles()).isZero();
         assertThat(result.getSkippedListed()).isZero();
-        assertThat(result.getSkippedNonJava()).isZero();
         assertThat(filesOf(result.listedOutlines())).containsExactly(validator);
         assertThat(result.getKnowledge().factsOf(validator))
                 .noneMatch(f -> f.getKind() == FactKind.DECLARES_METHOD);
@@ -81,7 +90,7 @@ class JavaUnderstandingServiceTest {
     }
 
     @Test
-    void skipsNonJavaFiles() throws IOException {
+    void outlinesNonJavaFilesLexically() throws IOException {
         write(repo.resolve("src/app.ts"),
                 "export class App { start() {} }");
         GraphFixture fx = GraphFixture.build(repo);
@@ -92,8 +101,13 @@ class JavaUnderstandingServiceTest {
         UnderstandingResult result = new JavaUnderstandingService(config).understand(ranking);
 
         assertThat(result.getAstFiles()).isZero();
-        assertThat(result.getSkippedNonJava()).isGreaterThanOrEqualTo(1);
-        assertThat(result.getOutlines()).isEmpty();
+        assertThat(result.getLexicalFiles()).isEqualTo(1);
+        assertThat(result.deepOutlines()).hasSize(1);
+        FileOutline app = result.getOutlines().get(0);
+        assertThat(app.getEngine()).isEqualTo(FileOutline.ENGINE_LEXICAL);
+        assertThat(app.typeNames()).contains("App");
+        assertThat(app.getResponsibility()).isEqualTo("App class.");
+        assertThat(app.getResponsibilitySource()).isEqualTo("heuristic");
     }
 
     private static List<FileInfo> filesOf(List<FileOutline> outlines) {

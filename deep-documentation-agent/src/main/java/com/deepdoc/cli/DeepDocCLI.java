@@ -103,14 +103,14 @@ public class DeepDocCLI implements Callable<Integer> {
             RankingResult ranking = new ImportanceRanker(config.getRanking()).rank(graph, activity, entryPoints);
             printRanking(graph, ranking, top);
 
-            UnderstandingResult understanding = new JavaUnderstandingService(config).understand(ranking);
+            UnderstandingResult understanding = new JavaUnderstandingService(config, !noLlm)
+                    .understand(graph, ranking, manifest.getContext().getDetectedArchitecture(), !noLlm);
             printUnderstanding(graph, understanding, top);
-            
+
             logger.info("");
             logger.info("✓ Repository analysis completed successfully");
             logger.info("");
             logger.info("Next steps:");
-            logger.info("  - Day 8-10: lexical outlines, responsibility sentences, optional LLM");
             logger.info("  - Documentation generation (Week 3)");
             
             return 0;
@@ -303,14 +303,14 @@ public class DeepDocCLI implements Callable<Integer> {
      */
     private void printUnderstanding(DependencyGraph graph, UnderstandingResult understanding, int top) {
         logger.info("");
-        logger.info("Java understanding (Day 6-7)");
-        logger.info("----------------------------");
+        logger.info("Code understanding (Day 6-10)");
+        logger.info("-----------------------------");
         logger.info("DEEP: {} files (method facts); SUMMARY: {} files (paragraph facts); LISTED skipped: {}",
                 understanding.deepOutlines().size(), understanding.summaryOutlines().size(),
                 understanding.getSkippedListed());
-        logger.info("Outlined {} Java files ({} failed, {} non-Java skipped)",
-                understanding.getOutlines().size(), understanding.getFailedFiles(),
-                understanding.getSkippedNonJava());
+        logger.info("Java AST: {}; lexical: {}; failed: {}; responsibilities: {}",
+                understanding.getAstFiles(), understanding.getLexicalFiles(),
+                understanding.getFailedFiles(), understanding.getLlmMode());
         logger.info("Facts: {}; unique types: {}; cross-file uses: {}",
                 understanding.getFactCount(), understanding.getKnowledge().uniqueTypes().size(),
                 understanding.getKnowledge().useEdgeCount());
@@ -330,6 +330,10 @@ public class DeepDocCLI implements Callable<Integer> {
         for (int i = 0; i < shown; i++) {
             FileOutline outline = outlines.get(i);
             logger.info("  {}", graph.relativePath(outline.getFile()));
+            if (!outline.getResponsibility().isEmpty()) {
+                logger.info("      responsibility ({}): {}", outline.getResponsibilitySource(),
+                        outline.getResponsibility());
+            }
             if (!outline.typeNames().isEmpty()) {
                 logger.info("      types: {}", String.join(", ", outline.typeNames()));
             }

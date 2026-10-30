@@ -8,23 +8,27 @@ import java.util.List;
 
 /**
  * Output of {@link JavaUnderstandingService}: outlines grouped by Week 1 documentation
- * level (DEEP vs SUMMARY), facts, and the type-use graph. LISTED files are not outlined
- * unless {@code understand.includeListed} is on.
+ * level (DEEP vs SUMMARY), facts, the type-use graph, and a one-sentence responsibility
+ * per outlined file. LISTED files are not outlined unless {@code understand.includeListed}
+ * is on.
  */
 public final class UnderstandingResult {
     private final KnowledgeGraph knowledge;
     private final int astFiles;
-    private final int skippedNonJava;
+    private final int lexicalFiles;
     private final int skippedListed;
     private final int failedFiles;
+    /** {@code openai} when a DEEP rewrite was attempted, otherwise {@code heuristic}. */
+    private final String llmMode;
 
-    public UnderstandingResult(KnowledgeGraph knowledge, int astFiles, int skippedNonJava,
-                               int skippedListed, int failedFiles) {
+    public UnderstandingResult(KnowledgeGraph knowledge, int astFiles, int lexicalFiles,
+                               int skippedListed, int failedFiles, String llmMode) {
         this.knowledge = knowledge;
         this.astFiles = astFiles;
-        this.skippedNonJava = skippedNonJava;
+        this.lexicalFiles = lexicalFiles;
         this.skippedListed = skippedListed;
         this.failedFiles = failedFiles;
+        this.llmMode = llmMode == null ? "heuristic" : llmMode;
     }
 
     public KnowledgeGraph getKnowledge() {
@@ -54,8 +58,13 @@ public final class UnderstandingResult {
         return astFiles;
     }
 
-    public int getSkippedNonJava() {
-        return skippedNonJava;
+    /** Non-Java DEEP and SUMMARY files outlined with declaration patterns. */
+    public int getLexicalFiles() {
+        return lexicalFiles;
+    }
+
+    public String getLlmMode() {
+        return llmMode;
     }
 
     /** Ranked Java files left at LISTED and therefore not parsed. */

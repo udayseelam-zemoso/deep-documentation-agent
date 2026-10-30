@@ -90,9 +90,9 @@ java -jar target/deep-documentation-agent-1.0.0.jar analyze /path/to/repo --verb
 | `analyze <path>` | Scan the repo, rank files, and print Java AST outlines |
 | `-v`, `--verbose` | Print a stack trace if something fails |
 | `-o`, `--output` | Reserved for later (docs output folder) |
-| `--no-llm` | Reserved for later (skip LLM) |
+| `--no-llm` | Keep Javadoc / name-heuristic responsibilities; do not call OpenAI |
 
-You do **not** need an OpenAI/Anthropic key for this slice. LLM calls are not wired yet.
+You do **not** need an API key to run `analyze`. Without `OPENAI_API_KEY`, or with `--no-llm`, every outlined file still gets a one-sentence responsibility from its comment or its name. A key is used only to rewrite **DEEP** sentences.
 
 ### 5. Change settings
 
@@ -176,11 +176,13 @@ The approach, formulas and a worked example are documented in [`design/README.md
 - A knowledge graph links outlined files that mention each other's unique type names (including same-package types that never appear in an import).
 - `analyze` prints a DEEP group then a SUMMARY group after ranking. Approach: [`design/understanding.md`](design/understanding.md).
 
-### Upcoming Work
+**Week 2, Day 8-10: lexical outlines and responsibilities** ✓
+- Non-Java DEEP and SUMMARY files are outlined with declaration patterns (JS/TS, Python, Go, Rust, and a Java-like fallback). Comments are blanked first, same as the dependency graph.
+- Each outlined file gets one sentence: the author's doc comment, otherwise a name/annotation heuristic (`OrdersController` → "Handles HTTP requests for orders.").
+- DEEP files can be rewritten by OpenAI when `OPENAI_API_KEY` is set and `--no-llm` was not passed. SUMMARY stays on the heuristic. A failed call keeps the draft.
+- Approach: [`design/day-8-10.md`](design/day-8-10.md).
 
-**Week 2, Day 8-10**
-- Lexical outlines for JS/TS and other languages
-- One-sentence responsibilities (Javadoc / name heuristic / optional LLM)
+### Upcoming Work
 
 **Week 3: Documentation Generation**
 - Markdown sections from DEEP / SUMMARY / LISTED
@@ -290,7 +292,7 @@ The project follows standard Java conventions with:
 
 - **Week 1** (Days 1-5): Foundation ✓
 - **Week 2** (Days 6-7): Java AST, fact extraction, knowledge graph ✓
-- **Week 2** (Days 8-10): Lexical outlines and responsibilities
+- **Week 2** (Days 8-10): Lexical outlines and responsibilities ✓
 - **Week 3** (Days 11-15): Documentation Generation
 - **Week 4** (Days 16-20): Verification and Delivery
 
